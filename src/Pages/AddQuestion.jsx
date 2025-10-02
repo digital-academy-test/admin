@@ -190,9 +190,10 @@ function AddQuestion() {
                     onChange={handleChange}
                     required
                   >
+                      <option value="">-- Select Exam --</option>
                     <option value="waec">WAEC</option>
                       <option value="neco">NECO</option>
-                      <option value="jamb">JAMB c</option>
+                      <option value="jamb">JAMB </option>
                       <option value="postutme">Post-UTME</option>
                       <option value="junior waec">Junior WAEC</option>
                       <option value="junior neco">Junior NECO</option>
