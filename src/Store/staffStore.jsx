@@ -50,7 +50,7 @@ export const useStaffstore = create(
           return true;
         } catch (err) {
           set({
-            error: err.response?.data?.message || "Invalid Staff ID or Password",
+            error: err.response?.data?.message || "Server Error",
             loading: false,
           });
           return false;

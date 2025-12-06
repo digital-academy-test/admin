@@ -17,7 +17,7 @@ const menu = [
   },
   {
     title: "CBT Management",
-    icon: "./icon/3.PNG",
+    icon: "./icon/8.PNG",
     pages: [
     
        {
@@ -40,7 +40,7 @@ const menu = [
   },
     {
     title: "Staff Management",
-    icon: "./icon/5.PNG",
+    icon: "./icon/4.PNG",
     pages: [
       {
         pageName: "Add Staff",
@@ -52,11 +52,66 @@ const menu = [
       },
     ],
   },
+   {
+    title: "Blog Management",
+    icon: "./icon/4.PNG",
+    pages: [
+      {
+        pageName: "Add  Blog post",
+        pageLink: "/post",
+      },
+      {
+        pageName: "Blog Posts",
+        pageLink: "/manage_post",
+      },
+    ],
+  },
+  {
+    title: "Course Management",
+    icon: "./icon/5.PNG",
+    pages: [
+      {
+        pageName: "Start Course",
+        pageLink: "/start_course",
+      },
+      {
+        pageName: "Courses",
+        pageLink: "/courses",
+      },
+       {
+        pageName: "Manage interests",
+        pageLink: "/interests",
+      },
+    ],
+  },
+   {
+    title: "plan Management",
+    icon: "./icon/8.PNG",
+    pages: [
+      {
+        pageName: "plans",
+        pageLink: "/plans",
+      },
+     
+    ],
+  },
 ];
 
 function Sidebar() {
   return (
     <ul>
+         <li >
+          {/* Section Title */}
+          <div className=" mb-2 ml-3">
+            <a href="/home" className="text-blue-600 hover:underline">
+             <img src='./icon/10.PNG' alt="Dashboard"  />
+            <span className="text-secondar">Dashboard</span>
+            </a>
+           
+          </div>
+
+         
+        </li>
       {menu.map((section, index) => (
         <li key={index} >
           {/* Section Title */}

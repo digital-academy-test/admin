@@ -2,9 +2,8 @@
 import { useEffect } from "react";
 import { useStaffstore } from "../Store/staffStore";
 
-
-export const useIdleLogout = (timeout = 5 * 60 * 1000) => { // 5 min
-  const { logout } = useStaffstore;
+export const useIdleLogout = (timeout = 10 * 60 * 1000) => {
+  const { logout } = useStaffstore(); // ✅ call the hook
 
   useEffect(() => {
     let timer;
@@ -12,8 +11,8 @@ export const useIdleLogout = (timeout = 5 * 60 * 1000) => { // 5 min
     const resetTimer = () => {
       clearTimeout(timer);
       timer = setTimeout(() => {
-        logout();
-        window.location.href = "/"; // force redirect to login
+        logout(); // works now
+        window.location.href = "/"; // redirect to login page
       }, timeout);
     };
 

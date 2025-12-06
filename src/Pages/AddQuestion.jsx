@@ -49,10 +49,12 @@ function AddQuestion() {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "image") {
+      
       setForm((f) => ({ ...f, image: files[0] }));
     } else {
       setForm((f) => ({ ...f, [name]: value }));
     }
+    console.log(form);
   };
 
   const handleOptionChange = (index, value) => {

@@ -199,7 +199,7 @@ h1{
   background: #fff;
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
   transition: left 0.3s ease-in-out;
-  z-index: 1100;
+  z-index: 1000;
   overflow-y: auto;
 }
 
@@ -234,10 +234,13 @@ h1{
     display: none;
   }
 }
-button{
+.btn-primary{
   background: linear-gradient(90deg, #20537c, #15253a) !important;
   color: #fff !important;
 }
 input,select,textarea{
   background-color: #f0f2f5 !important;
+}
+.text-primary{
+  color: #15253a !important;
 }

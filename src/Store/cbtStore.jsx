@@ -5,6 +5,9 @@ import { create } from "zustand";
 const API_URL = import.meta.env.VITE_API_URL;
 
 export const useCbtStore = create((set) => ({
+    exams: [],
+  question: [],
+  count: null,
   examData: [],
   loading: false,
   error: null,
@@ -102,6 +105,57 @@ addTopic: async (levelId, subjectId, topicName) => {
       error: err.response?.data?.message || "❌ Failed to add question",
       loading: false,
     });
+    throw err;
+  }
+},
+
+  // Get all available exams
+  getExams: async () => {
+    set({ loading: true, error: null });
+    try {
+      const res = await axios.get(`${API_URL}/cbt/exams`);
+      console.log(res.data.exams);
+      set({ exams: res.data.exams, loading: false });
+    } catch (err) {
+      console.error("Failed to fetch exams:", err);
+      set({ error: "Failed to load exams", loading: false });
+    }
+  },
+
+  // Get questions by exam, year, and subject
+getQuestion: async (exam, year, subject) => {
+  set({ isLoading: true, error: null });
+  try {
+    const response = await axios.get(`${API_URL}/cbt/questions?exam=${exam}&year=${year}&subject=${subject}`);
+    
+    const { questions, count } = response.data;
+
+    set({ question: questions, count, isLoading: false });
+
+    return response.data; // ✅ RETURN the data so component can use it
+  } catch (error) {
+    set({ error: error.response?.data?.message || "Error fetching questions", isLoading: false });
+    throw error;
+  }
+},
+// ✅ Update question
+updateQuestion: async (id, data) => {
+  try {
+    const res = await axios.put(`${API_URL}/cbt/updatequestion/${id}`, data);
+    return res.data;
+  } catch (err) {
+    console.error("Error updating question:", err);
+    throw err;
+  }
+},
+
+// ✅ Delete question
+deleteQuestion: async (id) => {
+  try {
+    const res = await axios.delete(`${API_URL}/cbt/deletequestion/${id}`);
+    return res.data;
+  } catch (err) {
+    console.error("Error deleting question:", err);
     throw err;
   }
 },
