@@ -2,6 +2,7 @@ import React from "react";
 import { FaFacebook, FaHome, FaBell, FaUserCircle, FaVideo } from "react-icons/fa";
 import { BsGrid3X3GapFill, BsMessenger } from "react-icons/bs";
 import logo from '../assets/mobile-logo.png';
+import { Link } from "react-router-dom";
 
 function Header({ onToggleSidebar }) {
   return (
@@ -36,7 +37,7 @@ function Header({ onToggleSidebar }) {
         <BsMessenger size={24} className="text-secondary cursor-pointer" />
         <FaVideo size={24} className="text-secondary cursor-pointer" />
         <FaBell size={24} className="text-secondary cursor-pointer" />
-        <FaUserCircle size={28} color="#20537c" className="cursor-pointer" />
+        <Link to="/profile"><FaUserCircle size={28} color="#20537c" className="cursor-pointer" /></Link>
       </div>
     </nav>
   );

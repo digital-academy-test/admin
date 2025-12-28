@@ -1,408 +1,397 @@
-// InstructorCourseView.jsx
+// InstructorCourseView.jsx - UPDATED FOR NEW BACKEND
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useCoursestore } from "../Store/courseStore"; // keep your original store hook
+import { useCourseStore } from "../Store/courseStore";
 import { Star, ChevronDown, ThumbsUp, ThumbsDown, Reply } from "lucide-react";
-
-/**
- * InstructorCourseView
- * - Uses Bootstrap classes for layout & components
- * - Expects fetchCourseDetail(id) to populate `course` in the store
- *
- * NOTE:
- * - Replace the dummy `studentsData` with actual data when ready.
- * - The "section click" navigates to `/instructor/course/:id/section/:sectionId` (adjust if you use a different route)
- */
 
 const PAGE_SIZE = 6;
 
 const InstructorCourseView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { course: storeCourse, fetchCourseDetail } = useCoursestore();
+  const { 
+    course, 
+    sections,
+    getCourseWithSections, 
+    getCourseStats,
+    getCourseStudents,
+    loading 
+  } = useCourseStore();
 
-  // Local copy so component re-renders predictably
-  const [course, setCourse] = useState(null);
-
-  // Students dummy data (replace with real load later)
-  const [studentsData] = useState(() => {
-    // create 28 dummy students with varied statuses
-    const statuses = ["active", "errored", "expired", "complete"];
-    return Array.from({ length: 28 }).map((_, i) => ({
-      id: `stu-${i + 1}`,
-      name: `Student ${i + 1}`,
-      email: `student${i + 1}@example.com`,
-      enrolledAt: new Date(Date.now() - (i + 1) * 86400000).toISOString(), // days ago
-      status: statuses[i % statuses.length],
-      progress: Math.floor(Math.random() * 101),
-    }));
-  });
-
-  // UI state for students table
+  const [stats, setStats] = useState(null);
+  const [students, setStudents] = useState([]);
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all"); // all, active, errored, expired, complete
+  const [filterStatus, setFilterStatus] = useState("all");
   const [page, setPage] = useState(1);
 
-  // fetch on mount or id change
+  // Fetch course data
   useEffect(() => {
-    if (id) fetchCourseDetail(id);
-  }, [id, fetchCourseDetail]);
-
-  // sync store course into local state
-  useEffect(() => {
-    if (storeCourse && storeCourse.course) {
-      setCourse(storeCourse);
+    if (id) {
+      getCourseWithSections(id);
+      loadStats();
+      loadStudents();
     }
-  }, [storeCourse]);
+  }, [id]);
 
-  // Derived stats
-  const stats = useMemo(() => {
-    if (!course) return { sections: 0, reviews: 0, totalQuestions: 0, unansweredQuestions: 0, students: studentsData.length };
+  const loadStats = async () => {
+    try {
+      const statsData = await getCourseStats(id);
+      setStats(statsData);
+    } catch (error) {
+      console.error("Failed to load stats:", error);
+    }
+  };
 
-    const sectionsCount = Array.isArray(course.sections) ? course.sections.length : 0;
-    const reviewsCount = Array.isArray(course.course.reviews) ? course.course.reviews.length : 0;
-    const totalQuestions = (course.sections || []).reduce((sum, s) => sum + ((s.questions && s.questions.length) || 0), 0);
-    // since questions in your sample have no answer field, treat all questions as unanswered
-    const unanswered = (course.sections || []).reduce((sum, s) => sum + ((s.questions && s.questions.length) || 0), 0);
+  const loadStudents = async () => {
+    try {
+      const result = await getCourseStudents(id, "", 1, 100);
+      setStudents(result.students || []);
+    } catch (error) {
+      console.error("Failed to load students:", error);
+    }
+  };
 
-    return {
-      sections: sectionsCount,
-      reviews: reviewsCount,
-      totalQuestions,
-      unansweredQuestions: unanswered,
-      students: studentsData.length,
-    };
-  }, [course, studentsData]);
-
-  // Students list filtered + searched
+  // Filter students
   const filteredStudents = useMemo(() => {
     const lowerSearch = search.trim().toLowerCase();
-    return studentsData
+    return students
       .filter((s) => {
-        if (filterStatus !== "all" && s.status !== filterStatus) return false;
+        if (filterStatus === "active" && s.completed) return false;
+        if (filterStatus === "completed" && !s.completed) return false;
         if (!lowerSearch) return true;
-        return s.name.toLowerCase().includes(lowerSearch) || s.email.toLowerCase().includes(lowerSearch);
+        return s.name?.toLowerCase().includes(lowerSearch) || 
+               s.email?.toLowerCase().includes(lowerSearch);
       })
       .sort((a, b) => (a.name > b.name ? 1 : -1));
-  }, [studentsData, search, filterStatus]);
+  }, [students, search, filterStatus]);
 
   const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
-  useEffect(() => {
-    if (page > totalPages) setPage(1);
-  }, [totalPages, page]);
-
   const studentsPaged = filteredStudents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  // rating and stars from course.course
-  const rating = course && course.course ? Number(course.course.average_rating || 0) : 0;
-  const totalRatings = course && course.course ? Number(course.course.total_ratings || 0) : 0;
-
   // Handlers
-  function onSectionClick(sectionId) {
-    // navigate to section page — adjust route if your app differs
-    navigate(`/instructor/course/${id}/section/${sectionId}`);
+  const handleSectionClick = (sectionId) => {
+    navigate(`/course/${id}/section/${sectionId}`);
+  };
+
+  const handleAddSection = () => {
+    navigate(`/add_section/${id}`);
+  };
+
+  if (loading && !course) {
+    return (
+      <div className="container py-5 text-center">
+        <div className="spinner-border text-primary" style={{ width: "3rem", height: "3rem" }}>
+          <span className="visually-hidden">Loading...</span>
+        </div>
+        <p className="mt-3 text-muted">Loading course details...</p>
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="container py-5">
+        <div className="alert alert-warning">
+          <i className="bi bi-exclamation-triangle me-2"></i>
+          Course not found
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container py-4">
-      {/* Course header */}
-      <div className="row mb-3 align-items-center">
-        <div className="col-md-2">
-          <img
-            src={course?.course?.course_thumbnail || "/placeholder-course.png"}
-            alt="course thumbnail"
-            className="img-fluid rounded"
-            style={{ maxHeight: 110, objectFit: "cover" }}
-          />
-        </div>
-        <div className="col-md-7">
-          <h3 className="mb-1">{course?.course?.course_title || "Loading course..."}</h3>
-          <div className="d-flex align-items-center gap-2">
-            <img
-              src={course?.course?.instructor_img}
-              alt="instructor"
-              style={{ width: 36, height: 36, objectFit: "cover" }}
-              className="rounded-circle me-2"
-            />
-            <div>
-              <div className="small text-muted">Instructor</div>
-              <div className="fw-semibold">{course?.course?.instructor || "-"}</div>
+    <div className="container-fluid py-4" style={{ backgroundColor: "#f8f9fa" }}>
+      {/* Header */}
+      <div className="card border-0 shadow-sm mb-4">
+        <div className="card-body p-4">
+          <div className="row align-items-center">
+            <div className="col-md-8">
+              <h2 className="fw-bold mb-2">{course.course_title}</h2>
+              <p className="text-muted mb-3">{course.short_description}</p>
+              <div className="d-flex gap-3 flex-wrap">
+                <span className="badge bg-primary px-3 py-2">
+                  <i className="bi bi-tag me-1"></i>{course.category}
+                </span>
+                <span className="badge bg-info px-3 py-2">
+                  <i className="bi bi-speedometer me-1"></i>{course.level}
+                </span>
+                <span className="badge bg-success px-3 py-2">
+                  <i className="bi bi-clock me-1"></i>{course.course_length}
+                </span>
+                <span className="badge bg-warning text-dark px-3 py-2">
+                  <i className="bi bi-star-fill me-1"></i>
+                  {course.average_rating?.toFixed(1) || "0.0"} ({course.total_ratings || 0} ratings)
+                </span>
+              </div>
             </div>
-          </div>
-          <p className="mt-2 text-muted small">{course?.course?.short_description}</p>
-        </div>
-
-        <div className="col-md-3 text-md-end mt-3 mt-md-0">
-          <div className="d-inline-block text-center">
-            <div className="fs-4 fw-semibold">{rating.toFixed(1)}</div>
-            <div className="text-muted small">{totalRatings} ratings</div>
-            <div className="mt-1">
-              <button className="btn btn-sm btn-outline-primary">Edit course</button>
+            <div className="col-md-4 text-md-end mt-3 mt-md-0">
+              <button
+                onClick={() => navigate(`/edit_course/${id}`)}
+                className="btn btn-outline-primary me-2"
+              >
+                <i className="bi bi-pencil me-1"></i>Edit Course
+              </button>
+              <button
+                onClick={handleAddSection}
+                className="btn text-white"
+                style={{ backgroundColor: "#0C6F89" }}
+              >
+                <i className="bi bi-plus-circle me-1"></i>Add Section
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Stats cards */}
-      <div className="row g-3 mb-4">
-        <div className="col-6 col-md-3">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <div className="small text-muted">Sections</div>
-              <div className="h5 mb-0">{stats.sections}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-6 col-md-3">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <div className="small text-muted">Reviews</div>
-              <div className="h5 mb-0">{stats.reviews}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-6 col-md-3">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <div className="small text-muted">Questions (total)</div>
-              <div className="h5 mb-0">{stats.totalQuestions}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-6 col-md-3">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <div className="small text-muted">Unanswered Questions</div>
-              <div className="h5 mb-0">{stats.unansweredQuestions}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-12 col-md-3 mt-2">
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <div className="small text-muted">Students (demo)</div>
-              <div className="h5 mb-0">{stats.students}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="row g-4">
-        {/* Left column: Sections + description */}
-        <div className="col-lg-7">
-          <div className="card mb-3 shadow-sm">
-            <div className="card-body">
-              <h5 className="card-title">Course Details</h5>
-              <p className="text-muted small">{course?.course?.description}</p>
-
-              <div className="mt-3">
-                <h6 className="mb-2">Learning Outcomes</h6>
-                <ul>
-                  {(course?.course?.learning_outcomes || []).map((lo, idx) => (
-                    <li key={idx} className="small text-muted">{lo}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-3">
-                <h6 className="mb-2">Requirements</h6>
-                <ul>
-                  {(course?.course?.requirements || []).map((req, idx) => (
-                    <li key={idx} className="small text-muted">{req}</li>
-                  ))}
-                </ul>
+      {/* Stats Cards */}
+      {stats && (
+        <div className="row g-3 mb-4">
+          <div className="col-md-3">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body text-center">
+                <i className="bi bi-collection fs-1 text-primary mb-2"></i>
+                <h3 className="fw-bold mb-0">{stats.sections_count || 0}</h3>
+                <p className="text-muted mb-0">Sections</p>
               </div>
             </div>
           </div>
-
-          {/* Sections list */}
-          <div className="card mb-3 shadow-sm">
-            <div className="card-body">
-              <h5 className="card-title">Sections ({stats.sections})</h5>
-
-              <div className="list-group">
-                {(course?.sections || []).map((section) => (
-                  <button
-                    key={section._id}
-                    type="button"
-                    className="list-group-item list-group-item-action d-flex justify-content-between align-items-start"
-                    onClick={() => onSectionClick(section._id)}
-                  >
-                    <div>
-                      <div className="fw-semibold">{section.title || "Untitled section"}</div>
-                      <div className="small text-muted">{section.description}</div>
-                    </div>
-                    <div className="small text-muted">{(section.contents || []).length} items</div>
-                  </button>
-                ))}
-                {(!course || (course.sections && course.sections.length === 0)) && (
-                  <div className="small text-muted mt-2">No sections yet.</div>
-                )}
+          <div className="col-md-3">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body text-center">
+                <i className="bi bi-people fs-1 text-success mb-2"></i>
+                <h3 className="fw-bold mb-0">{stats.total_enrollments || 0}</h3>
+                <p className="text-muted mb-0">Students Enrolled</p>
               </div>
             </div>
           </div>
+          <div className="col-md-3">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body text-center">
+                <i className="bi bi-question-circle fs-1 text-warning mb-2"></i>
+                <h3 className="fw-bold mb-0">{stats.total_questions || 0}</h3>
+                <p className="text-muted mb-0">Questions Asked</p>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body text-center">
+                <i className="bi bi-award fs-1 text-info mb-2"></i>
+                <h3 className="fw-bold mb-0">{stats.certificates_issued || 0}</h3>
+                <p className="text-muted mb-0">Certificates Issued</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-          {/* Reviews list (small) */}
-          <div className="card mb-3 shadow-sm">
-            <div className="card-body">
-              <h5 className="card-title">Reviews & Rating</h5>
+      {/* Tabs */}
+      <ul className="nav nav-tabs mb-4" role="tablist">
+        <li className="nav-item">
+          <button className="nav-link active" data-bs-toggle="tab" data-bs-target="#sections">
+            <i className="bi bi-list-ul me-2"></i>Sections
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className="nav-link" data-bs-toggle="tab" data-bs-target="#students">
+            <i className="bi bi-people me-2"></i>Students
+          </button>
+        </li>
+        <li className="nav-item">
+          <button className="nav-link" data-bs-toggle="tab" data-bs-target="#reviews">
+            <i className="bi bi-star me-2"></i>Reviews
+          </button>
+        </li>
+      </ul>
 
-              <div className="d-flex align-items-center mb-3">
-                <div className="fs-3 fw-bold me-3">{rating.toFixed(1)}</div>
-                <div>
-                  <div className="small text-muted">{totalRatings} ratings</div>
-                  <div className="d-flex gap-1 mt-1">
-                    {/* show 5 stars (filled up to rating) */}
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} size={18} className={i < Math.round(rating) ? "text-warning" : "text-muted"} />
-                    ))}
-                  </div>
-                </div>
+      <div className="tab-content">
+        {/* Sections Tab */}
+        <div className="tab-pane fade show active" id="sections">
+          <div className="card border-0 shadow-sm">
+            <div className="card-body p-4">
+              <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="fw-bold mb-0">Course Sections</h4>
+                <button onClick={handleAddSection} className="btn btn-sm btn-primary">
+                  <i className="bi bi-plus me-1"></i>Add Section
+                </button>
               </div>
 
-              <div>
-                {(course?.course?.reviews || []).length === 0 && <div className="small text-muted">No reviews yet.</div>}
-                {(course?.course?.reviews || []).map((rev, idx) => (
-                  <div key={idx} className="border-bottom pb-2 mb-2">
-                    <div className="d-flex align-items-center">
-                      <div className="rounded-circle bg-secondary me-2" style={{ width: 36, height: 36 }} />
-                      <div>
-                        <div className="fw-semibold small">{rev.reviewerName || "Anonymous"}</div>
-                        <div className="small text-muted">{new Date(rev.createdAt || Date.now()).toLocaleDateString()}</div>
+              {sections && sections.length > 0 ? (
+                <div className="list-group">
+                  {sections.map((section, idx) => (
+                    <div
+                      key={section._id}
+                      className="list-group-item list-group-item-action cursor-pointer"
+                      onClick={() => handleSectionClick(section._id)}
+                    >
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div className="flex-grow-1">
+                          <h6 className="fw-semibold mb-1">
+                            {idx + 1}. {section.title}
+                          </h6>
+                          <p className="text-muted mb-2 small">{section.description}</p>
+                          <div className="d-flex gap-3 small">
+                            <span>
+                              <i className="bi bi-play-circle me-1"></i>
+                              {section.contents?.filter(c => c.type === "video").length || 0} videos
+                            </span>
+                            <span>
+                              <i className="bi bi-file-pdf me-1"></i>
+                              {section.contents?.filter(c => c.type === "pdf").length || 0} PDFs
+                            </span>
+                            <span>
+                              <i className="bi bi-question-square me-1"></i>
+                              {section.contents?.filter(c => c.type === "quiz").length || 0} quizzes
+                            </span>
+                          </div>
+                        </div>
+                        <i className="bi bi-chevron-right text-muted"></i>
                       </div>
                     </div>
-                    <p className="mb-1 small text-muted">{rev.comment || rev.text || ""}</p>
-
-                    <div className="d-flex gap-2 small text-muted">
-                      <button className="btn btn-sm btn-outline-light"><ThumbsUp size={14} /> Yes</button>
-                      <button className="btn btn-sm btn-outline-light"><ThumbsDown size={14} /> No</button>
-                      <button className="btn btn-sm btn-outline-light"><Reply size={14} /> Reply</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-5">
+                  <i className="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
+                  <p className="text-muted">No sections yet. Add your first section!</p>
+                  <button onClick={handleAddSection} className="btn btn-primary mt-2">
+                    <i className="bi bi-plus-circle me-1"></i>Add First Section
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Right column: Students table & filters */}
-        <div className="col-lg-5">
-          <div className="card mb-3 shadow-sm">
-            <div className="card-body">
-              <h5 className="card-title">Enrolled Students</h5>
-
-              <div className="d-flex gap-2 mb-3">
-                <input
-                  type="text"
-                  className="form-control form-control-sm"
-                  placeholder="Search students (name or email)"
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setPage(1);
-                  }}
-                />
-                <select
-                  className="form-select form-select-sm"
-                  value={filterStatus}
-                  onChange={(e) => {
-                    setFilterStatus(e.target.value);
-                    setPage(1);
-                  }}
-                  style={{ maxWidth: 140 }}
-                >
-                  <option value="all">All</option>
-                  <option value="active">Active</option>
-                  <option value="errored">Errored</option>
-                  <option value="expired">Expired</option>
-                  <option value="complete">Complete</option>
-                </select>
+        {/* Students Tab */}
+        <div className="tab-pane fade" id="students">
+          <div className="card border-0 shadow-sm">
+            <div className="card-body p-4">
+              <div className="row mb-4">
+                <div className="col-md-6">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Search students..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-3">
+                  <select
+                    className="form-select"
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                  >
+                    <option value="all">All Students</option>
+                    <option value="active">Active</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="table-responsive" style={{ maxHeight: 340 }}>
-                <table className="table table-sm table-hover mb-0">
-                  <thead className="table-light" style={{ position: "sticky", top: 0 }}>
-                    <tr>
-                      <th>Name</th>
-                      <th className="text-end">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {studentsPaged.length === 0 && (
+              {studentsPaged.length > 0 ? (
+                <div className="table-responsive">
+                  <table className="table table-hover">
+                    <thead className="table-light">
                       <tr>
-                        <td colSpan={2} className="small text-muted">No students match your filters.</td>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Enrolled</th>
+                        <th>Progress</th>
+                        <th>Status</th>
                       </tr>
-                    )}
-                    {studentsPaged.map((s) => (
-                      <tr key={s.id}>
-                        <td>
-                          <div className="fw-semibold small">{s.name}</div>
-                          <div className="small text-muted">{s.email}</div>
-                        </td>
-                        <td className="text-end small">
-                          <span className={`badge bg-${s.status === "active" ? "success" : s.status === "complete" ? "primary" : s.status === "errored" ? "danger" : "secondary"}`}>
-                            {s.status}
-                          </span>
-                          <div className="small text-muted mt-1">{s.progress}%</div>
-                        </td>
-                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentsPaged.map((student) => (
+                        <tr key={student.user_id}>
+                          <td className="fw-semibold">{student.name}</td>
+                          <td className="text-muted">{student.email}</td>
+                          <td>{new Date(student.enrolled_on).toLocaleDateString()}</td>
+                          <td>
+                            <div className="progress" style={{ height: "8px" }}>
+                              <div
+                                className="progress-bar"
+                                style={{ width: `${student.overall_progress}%` }}
+                              ></div>
+                            </div>
+                            <small className="text-muted">{student.overall_progress}%</small>
+                          </td>
+                          <td>
+                            <span className={`badge ${student.completed ? "bg-success" : "bg-primary"}`}>
+                              {student.completed ? "Completed" : "Active"}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-5">
+                  <i className="bi bi-people fs-1 text-muted mb-3 d-block"></i>
+                  <p className="text-muted">No students enrolled yet</p>
+                </div>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <nav className="mt-4">
+                  <ul className="pagination justify-content-center">
+                    <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
+                      <button className="page-link" onClick={() => setPage(page - 1)}>
+                        Previous
+                      </button>
+                    </li>
+                    {[...Array(totalPages)].map((_, i) => (
+                      <li key={i} className={`page-item ${page === i + 1 ? "active" : ""}`}>
+                        <button className="page-link" onClick={() => setPage(i + 1)}>
+                          {i + 1}
+                        </button>
+                      </li>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* pagination */}
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div className="small text-muted">
-                  Showing {(page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, filteredStudents.length)} of {filteredStudents.length}
-                </div>
-                <div>
-                  <nav>
-                    <ul className="pagination pagination-sm mb-0">
-                      <li className={`page-item ${page === 1 ? "disabled" : ""}`}>
-                        <button className="page-link" onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</button>
-                      </li>
-
-                      {Array.from({ length: totalPages }).map((_, i) => {
-                        const pg = i + 1;
-                        // show up to first 5 pages in controls, with ellipsis if many
-                        if (totalPages > 7) {
-                          // smart trimming
-                          if (pg > 2 && pg < totalPages - 1 && Math.abs(pg - page) > 2) {
-                            // skip rendering middle distant pages
-                            return null;
-                          }
-                        }
-                        return (
-                          <li key={pg} className={`page-item ${pg === page ? "active" : ""}`}>
-                            <button className="page-link" onClick={() => setPage(pg)}>{pg}</button>
-                          </li>
-                        );
-                      })}
-
-                      <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
-                        <button className="page-link" onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
-                      </li>
-                    </ul>
-                  </nav>
-                </div>
-              </div>
+                    <li className={`page-item ${page === totalPages ? "disabled" : ""}`}>
+                      <button className="page-link" onClick={() => setPage(page + 1)}>
+                        Next
+                      </button>
+                    </li>
+                  </ul>
+                </nav>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Small quick stats or actions */}
-          <div className="card shadow-sm">
-            <div className="card-body">
-              <h6 className="card-title">Quick Actions</h6>
-              <div className="d-grid gap-2">
-                <button className="btn btn-outline-primary btn-sm">Export students (CSV)</button>
-                <button className="btn btn-outline-secondary btn-sm">Message all students</button>
-                <button className="btn btn-outline-danger btn-sm">Unpublish course</button>
-              </div>
+        {/* Reviews Tab */}
+        <div className="tab-pane fade" id="reviews">
+          <div className="card border-0 shadow-sm">
+            <div className="card-body p-4">
+              <h4 className="fw-bold mb-4">Student Reviews</h4>
+              {course.reviews && course.reviews.length > 0 ? (
+                <div>
+                  {course.reviews.map((review, idx) => (
+                    <div key={idx} className="border-bottom pb-3 mb-3">
+                      <div className="d-flex justify-content-between">
+                        <div>
+                          <h6 className="fw-semibold mb-1">{review.user_name}</h6>
+                          <div className="text-warning mb-2">
+                            {"⭐".repeat(review.rating)}
+                          </div>
+                        </div>
+                        <small className="text-muted">
+                          {new Date(review.created_at).toLocaleDateString()}
+                        </small>
+                      </div>
+                      <p className="text-muted mb-0">{review.comment}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-5">
+                  <i className="bi bi-star fs-1 text-muted mb-3 d-block"></i>
+                  <p className="text-muted">No reviews yet</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

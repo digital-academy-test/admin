@@ -2,33 +2,28 @@
 import React, { useEffect, useState } from "react";
 import { useCbtStore } from "../Store/cbtStore";
 import { useNavigate } from "react-router-dom";
+import { FaBook, FaCalendar, FaCheckSquare, FaEye } from "react-icons/fa";
 
 function Question() {
-  const { exams, getExams } = useCbtStore();
-  const [selectedExam, setSelectedExam] = useState("");
+  const { exams, getExams, loading } = useCbtStore();
+  const [selectedExam, setSelectedExam] = useState(null);
   const [selectedYear, setSelectedYear] = useState("");
   const [subjects, setSubjects] = useState([]);
   const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [duration, setDuration] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     getExams();
-  }, [getExams]);
+  }, []);
 
   const handleExamChange = (e) => {
-    const examName = e.target.value;
-    setSelectedExam(examName);
+    const examId = e.target.value;
+    const exam = exams.find((ex) => ex._id === examId);
+    
+    setSelectedExam(exam);
     setSelectedYear("");
     setSubjects([]);
     setSelectedSubjects([]);
-
-    const exam = exams.find(
-      (ex) => ex.name?.toLowerCase() === examName.toLowerCase()
-    );
-    if (exam) {
-      setDuration(exam.time || "N/A");
-    }
   };
 
   const handleYearChange = (e) => {
@@ -36,12 +31,13 @@ function Question() {
     setSelectedYear(year);
     setSelectedSubjects([]);
 
-    const exam = exams.find(
-      (ex) => ex.name?.toLowerCase() === selectedExam.toLowerCase()
-    );
-    if (exam) {
-      const yearObj = exam.years?.find((y) => y.year === year);
-      setSubjects(yearObj?.subjects || []);
+    if (selectedExam) {
+      const yearObj = selectedExam.years?.find((y) => y.year === year);
+      // Extract subject names from the year's subjects array
+      const subjectNames = yearObj?.subjects.map(s => 
+        typeof s === 'string' ? s : s.name
+      ) || [];
+      setSubjects(subjectNames);
     }
   };
 
@@ -55,17 +51,18 @@ function Question() {
 
   const handleManage = () => {
     if (selectedSubjects.length === 0) {
-      alert("Select at least one subject.");
+      alert("Please select at least one subject.");
       return;
     }
 
-    // ✅ Open ManageQuestion page for the first selected subject
+    // Navigate to ManageQuestions page
     navigate("/manage_question", {
       state: {
-        exam: selectedExam,
+        examId: selectedExam._id,
+        examName: selectedExam.name,
         year: selectedYear,
         subject: selectedSubjects[0],
-        duration,
+        duration: selectedExam.defaultTotalTime,
       },
     });
   };
@@ -73,85 +70,165 @@ function Question() {
   return (
     <div className="d-flex justify-content-center mt-4">
       <div
-        className="card shadow-sm p-4"
-        style={{ maxWidth: "600px", width: "100%", borderRadius: "12px" }}
+        className="card shadow-lg border-0 rounded-4"
+        style={{ maxWidth: "700px", width: "100%" }}
       >
-        <h4 className="mb-4">Manage Questions</h4>
+        <div 
+          className="card-header text-white py-3"
+          style={{ background: "#15253a" }}
+        >
+          <h4 className="mb-0 d-flex align-items-center gap-2">
+            <FaBook />
+            Manage Questions
+          </h4>
+        </div>
 
-        <form>
-          <div className="form-group mt-2">
-            <label>Select Exam</label>
-            <select
-              value={selectedExam}
-              onChange={handleExamChange}
-              className="form-control"
-            >
-              <option value="">-- Select Exam --</option>
-              {exams.map((exam, idx) => (
-                <option key={idx} value={exam.name}>
-                  {exam.name?.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedExam && (
-            <div className="form-group mt-2">
-              <label>Select Year</label>
-              <select
-                value={selectedYear}
-                onChange={handleYearChange}
-                className="form-control"
-              >
-                <option value="">-- Select Year --</option>
-                {exams
-                  .find(
-                    (ex) =>
-                      ex.name?.toLowerCase() === selectedExam.toLowerCase()
-                  )
-                  ?.years?.map((yearObj, idx) => (
-                    <option key={idx} value={yearObj.year}>
-                      {yearObj.year}
+        <div className="card-body p-4">
+          {loading ? (
+            <div className="text-center py-4">
+              <div className="spinner-border text-primary" />
+              <p className="mt-2">Loading exams...</p>
+            </div>
+          ) : (
+            <form>
+              {/* Select Exam */}
+              <div className="mb-4">
+                <label className="form-label fw-bold">
+                  <FaBook className="me-2" />
+                  Select Exam
+                </label>
+                <select
+                  value={selectedExam?._id || ""}
+                  onChange={handleExamChange}
+                  className="form-select form-select-lg"
+                  required
+                >
+                  <option value="">-- Select Exam --</option>
+                  {exams.map((exam) => (
+                    <option key={exam._id} value={exam._id}>
+                      {exam.displayName} ({exam.name.toUpperCase()})
                     </option>
                   ))}
-              </select>
-            </div>
-          )}
-
-          {subjects.length > 0 && (
-            <div className="mt-3">
-              <h5>Pick Subject(s):</h5>
-              {subjects.map((subj, idx) => (
-                <div key={idx}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      value={subj}
-                      checked={selectedSubjects.includes(subj)}
-                      onChange={() => handleSubjectToggle(subj)}
-                    />{" "}
-                    {subj}
-                  </label>
-                </div>
-              ))}
-
-              <p className="mt-2">
-                <strong>Duration:</strong> {duration} mins
-              </p>
-
-              <div className="btn-container">
-                <button
-                  type="button"
-                  disabled={selectedSubjects.length === 0}
-                  onClick={handleManage}
-                  className="mt-3 px-4 py-2 bg-[#15253a] text-white rounded hover:bg-[#0f1d2d]"
-                >
-                  View / Manage Questions
-                </button>
+                </select>
+                {exams.length === 0 && (
+                  <small className="text-danger">
+                    No exams available. Please create an exam first.
+                  </small>
+                )}
               </div>
-            </div>
+
+              {/* Select Year */}
+              {selectedExam && (
+                <div className="mb-4">
+                  <label className="form-label fw-bold">
+                    <FaCalendar className="me-2" />
+                    Select Year
+                  </label>
+                  <select
+                    value={selectedYear}
+                    onChange={handleYearChange}
+                    className="form-select form-select-lg"
+                    required
+                  >
+                    <option value="">-- Select Year --</option>
+                    {selectedExam.years?.map((yearObj) => (
+                      <option key={yearObj.year} value={yearObj.year}>
+                        {yearObj.year} ({yearObj.subjects?.length || 0} subjects)
+                      </option>
+                    ))}
+                  </select>
+                  {selectedExam.years?.length === 0 && (
+                    <small className="text-danger">
+                      No years available for this exam. Please add a year first.
+                    </small>
+                  )}
+                </div>
+              )}
+
+              {/* Select Subjects */}
+              {subjects.length > 0 && (
+                <div className="mb-4">
+                  <label className="form-label fw-bold">
+                    <FaCheckSquare className="me-2" />
+                    Select Subject(s)
+                  </label>
+                  <div className="card">
+                    <div className="card-body">
+                      {subjects.map((subj, idx) => (
+                        <div key={idx} className="form-check mb-2">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            id={`subject-${idx}`}
+                            value={subj}
+                            checked={selectedSubjects.includes(subj)}
+                            onChange={() => handleSubjectToggle(subj)}
+                          />
+                          <label 
+                            className="form-check-label" 
+                            htmlFor={`subject-${idx}`}
+                          >
+                            {subj}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Exam Info */}
+              {selectedExam && selectedYear && (
+                <div className="card mb-4 bg-light">
+                  <div className="card-body">
+                    <h6 className="fw-bold mb-3">Exam Details:</h6>
+                    <div className="row">
+                      <div className="col-md-6 mb-2">
+                        <small className="text-muted">Duration:</small>
+                        <br />
+                        <strong>{selectedExam.defaultTotalTime} minutes</strong>
+                      </div>
+                      <div className="col-md-6 mb-2">
+                        <small className="text-muted">Time per question:</small>
+                        <br />
+                        <strong>{selectedExam.defaultTimePerQuestion} seconds</strong>
+                      </div>
+                      <div className="col-md-6 mb-2">
+                        <small className="text-muted">Passing score:</small>
+                        <br />
+                        <strong>{selectedExam.passingPercentage}%</strong>
+                      </div>
+                      <div className="col-md-6 mb-2">
+                        <small className="text-muted">Total questions:</small>
+                        <br />
+                        <strong>{selectedExam.totalQuestions || 0}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              {subjects.length > 0 && (
+                <div className="d-grid">
+                  <button
+                    type="button"
+                    disabled={selectedSubjects.length === 0}
+                    onClick={handleManage}
+                    className="btn btn-lg text-white"
+                    style={{ background: "#15253a" }}
+                  >
+                    <FaEye className="me-2" />
+                    View / Manage Questions
+                    {selectedSubjects.length > 0 && 
+                      ` (${selectedSubjects.length} subject${selectedSubjects.length > 1 ? 's' : ''})`
+                    }
+                  </button>
+                </div>
+              )}
+            </form>
           )}
-        </form>
+        </div>
       </div>
     </div>
   );

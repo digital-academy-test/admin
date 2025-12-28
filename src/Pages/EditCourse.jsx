@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 
-import { useCoursestore } from "../Store/courseStore";
+import { useCourseStore } from "../Store/courseStore";
 
 const EditCourse = () => {
-  const { updateCourse, error, loading, message,  fetchCourseDetail,course } = useCoursestore();
+  const { updateCourse, error, loading, message,  getCourseById,course } = useCourseStore();
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -36,7 +36,7 @@ const EditCourse = () => {
 
   // ✅ Fetch existing course details
 useEffect(() => {
-  fetchCourseDetail(id);
+  getCourseById(id);
 }, [id]);
 
 useEffect(() => {

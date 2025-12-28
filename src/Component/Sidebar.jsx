@@ -33,6 +33,22 @@ const menu = [
         pageLink: "/add_question",
       },
       {
+        pageName: "Create Exam",
+        pageLink: "/add_exam",
+      },
+       {
+        pageName: "add Year",
+        pageLink: "/add_year",
+      },
+       {
+        pageName: "Manage Exams",
+        pageLink: "/manage_exam",
+      },
+       {
+        pageName: "Create Exam",
+        pageLink: "/add_exam",
+      },
+      {
         pageName: "Questions Management",
         pageLink: "/questions",
       },
@@ -47,8 +63,8 @@ const menu = [
         pageLink: "/add_staff",
       },
       {
-        pageName: "Questions Management",
-        pageLink: "/questions",
+        pageName: "Staff Management",
+        pageLink: "/staff",
       },
     ],
   },
@@ -58,7 +74,7 @@ const menu = [
     pages: [
       {
         pageName: "Add  Blog post",
-        pageLink: "/post",
+        pageLink: "/create_blog",
       },
       {
         pageName: "Blog Posts",
@@ -66,6 +82,7 @@ const menu = [
       },
     ],
   },
+  /*
   {
     title: "Course Management",
     icon: "./icon/5.PNG",
@@ -83,7 +100,7 @@ const menu = [
         pageLink: "/interests",
       },
     ],
-  },
+  },*/
    {
     title: "plan Management",
     icon: "./icon/8.PNG",

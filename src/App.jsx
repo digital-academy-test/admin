@@ -24,6 +24,15 @@ import ManageBlogs from "./Pages/ManageBlogs";
 import EditCourse from "./Pages/EditCourse";
 import InstructorCourseView from "./Pages/InstructorCourseView";
 import PlansAdmin from "./Pages/PlansAdmin";
+import { Toaster } from "react-hot-toast";
+import StaffManagement from "./Pages/Staffmanagement";
+import StaffProfile from "./Pages/profile";
+import CreateExam from "./Pages/CreateExam";
+import AddYear from "./Pages/Addyear";
+import ManageExams from "./Pages/ManageExams";
+import EditExam from "./Pages/EditExam";
+import BlogDetail from "./Pages/BlogDetail";
+import InstructorSectionView from "./Pages/InstructorSectionView";
 
 function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -34,6 +43,7 @@ function Layout() {
 
   return (
     <>
+    <Toaster position="top-right" />
       <Header onToggleSidebar={toggleSidebar} />
       <main className="main-container">
         <div className={`sidebar-drawer Side-menu-container ${isSidebarOpen ? "open" : ""}`}>
@@ -51,19 +61,27 @@ function Layout() {
             <Route path="/add_staff" element={<ProtectedRoute><AddStaff /></ProtectedRoute>} />
             <Route path="/add_question" element={<ProtectedRoute><AddQuestion /></ProtectedRoute>} />
              <Route path="/questions" element={<ProtectedRoute><Question /></ProtectedRoute>} />
+             <Route path="/add_year" element={<ProtectedRoute><AddYear/></ProtectedRoute>} />
+             <Route path="/manage_exam" element={<ProtectedRoute><ManageExams/></ProtectedRoute>} />
+              <Route path="/edit_exam/:examId" element={<ProtectedRoute><EditExam/></ProtectedRoute>} />
+
              <Route path="/manage_question" element={<ProtectedRoute><ManageQuestion/></ProtectedRoute>} />
+              <Route path="/add_exam" element={<ProtectedRoute><CreateExam/></ProtectedRoute>} />
             <Route path="/add_subject" element={<ProtectedRoute><AddSubject /></ProtectedRoute>} />
-       
+             <Route path="/staff" element={<ProtectedRoute><StaffManagement/></ProtectedRoute>} />
+             <Route path="/profile" element={<ProtectedRoute><StaffProfile/></ProtectedRoute>} />
             <Route path="/add_topic" element={<ProtectedRoute><AddTopic /></ProtectedRoute>} />
             <Route path="/start_course" element={<ProtectedRoute><AddCourse /></ProtectedRoute>} />
             <Route path="/interests" element={<ProtectedRoute><ManageInterests /></ProtectedRoute>} />
             <Route path="/courses" element={<ProtectedRoute><Courses/></ProtectedRoute>} />
-            <Route path="/post" element={<ProtectedRoute><CreatePost/></ProtectedRoute>} />
+            <Route path="/create_blog" element={<ProtectedRoute><CreatePost/></ProtectedRoute>} />
+            <Route path="/blog/:id" element={<ProtectedRoute><BlogDetail/></ProtectedRoute>} />
              <Route path="/plans" element={<ProtectedRoute><PlansAdmin/></ProtectedRoute>} />
              <Route path="/manage_post" element={<ProtectedRoute><ManageBlogs/></ProtectedRoute>} />
-            <Route path="/course/:id/add-section" element={<ProtectedRoute><AddSection /></ProtectedRoute>} />
-            <Route path="/course/:id/edit" element={<ProtectedRoute><EditCourse /></ProtectedRoute>} />
-            <Route path="/course/:id/view" element={<ProtectedRoute><InstructorCourseView /></ProtectedRoute>} />
+            <Route path="/add_section/:id" element={<ProtectedRoute><AddSection /></ProtectedRoute>} />
+            <Route path="/edit_course/:id" element={<ProtectedRoute><EditCourse /></ProtectedRoute>} />
+            <Route path="/course/:courseId/section/:sectionId" element={<ProtectedRoute><InstructorSectionView /></ProtectedRoute>} />
+            <Route path="/course/:id/stats" element={<ProtectedRoute><InstructorCourseView /></ProtectedRoute>} />
             <Route path="*" element={<ProtectedRoute><Home /></ProtectedRoute>} />
           </Routes>
         </section>

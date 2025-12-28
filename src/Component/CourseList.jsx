@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import CourseCard from "./CourseCard";
-import { useCoursestore } from "../Store/courseStore";
+import { useCourseStore } from "../Store/courseStore";
 import { FiSearch } from "react-icons/fi";
 import axios from "axios";
 
 function CourseList() {
-  const { courses, getAllCourses, loading, error,deleteCourse } = useCoursestore();
+  const { courses, getAllCourses, loading, error,deleteCourse } = useCourseStore();
   const [searchTerm, setSearchTerm] = useState("");
   const [courseList, setCourseList] = useState([]);
 
