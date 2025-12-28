@@ -1,9 +1,15 @@
 import React from "react";
+import icon1 from '../assets/icon/1.PNG';
+import icon4 from '../assets/icon/4.PNG';
+import icon5 from '../assets/icon/5.PNG';
+import icon8 from '../assets/icon/8.PNG';
+import icon10 from '../assets/icon/10.PNG';
+
 
 const menu = [
   {
     title: "Role Management",
-    icon: "./icon/1.PNG",
+    icon: icon1,
     pages: [
       {
         pageName: "Add Role",
@@ -17,7 +23,7 @@ const menu = [
   },
   {
     title: "CBT Management",
-    icon: "./icon/8.PNG",
+    icon: icon8,
     pages: [
     
        {
@@ -56,7 +62,7 @@ const menu = [
   },
     {
     title: "Staff Management",
-    icon: "./icon/4.PNG",
+    icon: icon4,
     pages: [
       {
         pageName: "Add Staff",
@@ -70,7 +76,7 @@ const menu = [
   },
    {
     title: "Blog Management",
-    icon: "./icon/4.PNG",
+    icon: icon4,
     pages: [
       {
         pageName: "Add  Blog post",
@@ -103,7 +109,7 @@ const menu = [
   },*/
    {
     title: "plan Management",
-    icon: "./icon/8.PNG",
+    icon: icon8,
     pages: [
       {
         pageName: "plans",
