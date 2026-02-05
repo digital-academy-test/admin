@@ -1,4 +1,4 @@
-// src/Store/cbtStore.js
+// src/Store/cbtStore.js - ENHANCED WITH ADMIN FEATURES
 import axios from "axios";
 import { create } from "zustand";
 
@@ -32,8 +32,8 @@ export const useCbtStore = create((set, get) => ({
   questionCount: 0,
   
   // Subjects & Topics (Legacy)
-  examStructure: [], // Levels with subjects and topics
-  examData: [], // Alias for backward compatibility
+  examStructure: [],
+  examData: [],
   
   // Attempts & Analytics
   attempts: [],
@@ -46,7 +46,6 @@ export const useCbtStore = create((set, get) => ({
   message: null,
 
   // ==================== BACKWARD COMPATIBILITY ====================
-  // Computed property for old components
   get examData() {
     return get().examStructure;
   },
@@ -55,7 +54,6 @@ export const useCbtStore = create((set, get) => ({
   
   /**
    * Create a new exam
-   * @param {Object} examData - { name, displayName, category, defaultTimePerQuestion, defaultTotalTime, passingPercentage, instructions }
    */
   createExam: async (examData) => {
     set({ loading: true, error: null, message: null });
@@ -79,8 +77,8 @@ export const useCbtStore = create((set, get) => ({
   },
 
   /**
-   * Get all exams
-   * @param {Object} filters - { category, isActive }
+   * 🆕 ENHANCED: Get all exams with admin mode
+   * @param {Object} filters - { category, isActive, admin }
    */
   getExams: async (filters = {}) => {
     set({ loading: true, error: null });
@@ -106,12 +104,20 @@ export const useCbtStore = create((set, get) => ({
   },
 
   /**
+   * 🆕 NEW: Get all exams for admin (includes hidden subjects)
+   */
+  getExamsForAdmin: async (filters = {}) => {
+    return await get().getExams({ ...filters, admin: true });
+  },
+
+  /**
    * Get single exam by ID
    */
-  getExamById: async (examId) => {
+  getExamById: async (examId, isAdmin = false) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.get(`/cbt/exams/${examId}`);
+      const adminParam = isAdmin ? '?admin=true' : '';
+      const res = await api.get(`/cbt/exams/${examId}${adminParam}`);
       
       set({ 
         selectedExam: res.data.exam, 
@@ -159,8 +165,6 @@ export const useCbtStore = create((set, get) => ({
 
   /**
    * Delete exam
-   * @param {String} examId
-   * @param {Boolean} permanent - If true, hard delete; if false, soft delete
    */
   deleteExam: async (examId, permanent = false) => {
     set({ loading: true, error: null, message: null });
@@ -183,8 +187,6 @@ export const useCbtStore = create((set, get) => ({
 
   /**
    * Add year to exam
-   * @param {String} examId
-   * @param {Object} yearData - { year, subjects: [{ name, timeAllocation }] }
    */
   addYearToExam: async (examId, yearData) => {
     set({ loading: true, error: null, message: null });
@@ -212,9 +214,6 @@ export const useCbtStore = create((set, get) => ({
 
   /**
    * Add subject to exam year
-   * @param {String} examId
-   * @param {Number} year
-   * @param {Object} subjectData - { name, timeAllocation }
    */
   addSubjectToYear: async (examId, year, subjectData) => {
     set({ loading: true, error: null, message: null });
@@ -244,12 +243,13 @@ export const useCbtStore = create((set, get) => ({
   },
 
   /**
-   * Get years for an exam
+   * 🆕 ENHANCED: Get years for an exam (with admin mode)
    */
-  getExamYears: async (examId) => {
+  getExamYears: async (examId, isAdmin = false) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.get(`/cbt/exams/${examId}/years`);
+      const adminParam = isAdmin ? '?admin=true' : '';
+      const res = await api.get(`/cbt/exams/${examId}/years${adminParam}`);
       
       set({ 
         examYears: res.data.years, 
@@ -269,12 +269,13 @@ export const useCbtStore = create((set, get) => ({
   },
 
   /**
-   * Get subjects for exam year
+   * 🆕 ENHANCED: Get subjects for exam year (with admin mode)
    */
-  getYearSubjects: async (examId, year) => {
+  getYearSubjects: async (examId, year, isAdmin = false) => {
     set({ loading: true, error: null });
     try {
-      const res = await api.get(`/cbt/exams/${examId}/years/${year}/subjects`);
+      const adminParam = isAdmin ? '?admin=true' : '';
+      const res = await api.get(`/cbt/exams/${examId}/years/${year}/subjects${adminParam}`);
       
       set({ 
         examSubjects: res.data.subjects, 
@@ -293,11 +294,104 @@ export const useCbtStore = create((set, get) => ({
     }
   },
 
+  // ==================== 🆕 NEW: VISIBILITY MANAGEMENT ====================
+
+  /**
+   * Toggle subject visibility
+   * @param {String} examId 
+   * @param {Number} year 
+   * @param {String} subject 
+   * @param {Boolean} isVisible 
+   */
+  toggleSubjectVisibility: async (examId, year, subject, isVisible) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.put(
+        `/cbt/exams/${examId}/years/${year}/subjects/${subject}/visibility`,
+        { isVisible }
+      );
+      
+      set((state) => ({
+        exams: state.exams.map(exam => 
+          exam._id === examId ? res.data.exam : exam
+        ),
+        selectedExam: res.data.exam,
+        message: res.data.message || `✅ Subject visibility updated`,
+        loading: false,
+        error: null,
+      }));
+      
+      return res.data.exam;
+    } catch (err) {
+      console.error("Error toggling visibility:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to update visibility";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Bulk update subject visibilities
+   * @param {String} examId 
+   * @param {Array} updates - [{ year, subject, isVisible }]
+   */
+  bulkUpdateVisibility: async (examId, updates) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.post(
+        `/cbt/exams/${examId}/bulk-visibility`,
+        { updates }
+      );
+      
+      set((state) => ({
+        exams: state.exams.map(exam => 
+          exam._id === examId ? res.data.exam : exam
+        ),
+        message: res.data.message || "✅ Bulk visibility update completed",
+        loading: false,
+        error: null,
+      }));
+      
+      return res.data.results;
+    } catch (err) {
+      console.error("Error bulk updating visibility:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to bulk update visibility";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Sync question counts for an exam
+   * @param {String} examId 
+   */
+  syncQuestionCounts: async (examId) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.post(`/cbt/exams/${examId}/sync-counts`);
+      
+      set((state) => ({
+        exams: state.exams.map(exam => 
+          exam._id === examId ? res.data.exam : exam
+        ),
+        message: res.data.message || "✅ Question counts synced",
+        loading: false,
+        error: null,
+      }));
+      
+      return res.data.updates;
+    } catch (err) {
+      console.error("Error syncing counts:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to sync counts";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
   // ==================== QUESTION MANAGEMENT ====================
 
   /**
    * Add single question with image support
-   * @param {FormData} formData - Must include all question fields and images
    */
   addQuestion: async (formData) => {
     set({ loading: true, error: null, message: null });
@@ -323,16 +417,15 @@ export const useCbtStore = create((set, get) => ({
   },
 
   /**
-   * Add multiple questions (bulk upload)
-   * @param {Object} bulkData - { questions: [], examId, examName, year, subject }
+   * Add bulk questions
    */
-  addBulkQuestions: async (bulkData) => {
+  addBulkQuestions: async (questionsData) => {
     set({ loading: true, error: null, message: null });
     try {
-      const res = await api.post('/cbt/questions/bulk', bulkData);
+      const res = await api.post('/cbt/questions/bulk', questionsData);
 
       set({
-        message: res.data.message || "✅ Questions added successfully",
+        message: res.data.message || "✅ Bulk questions added successfully",
         loading: false,
         error: null,
       });
@@ -340,7 +433,7 @@ export const useCbtStore = create((set, get) => ({
       return res.data;
     } catch (err) {
       console.error("Error adding bulk questions:", err);
-      const errorMsg = err.response?.data?.message || "❌ Failed to add questions";
+      const errorMsg = err.response?.data?.message || "❌ Failed to add bulk questions";
       set({ error: errorMsg, loading: false });
       throw err;
     }
@@ -348,14 +441,12 @@ export const useCbtStore = create((set, get) => ({
 
   /**
    * Get questions with filters
-   * @param {Object} filters - { examId, examName, year, subject, topic, difficulty, shuffle }
    */
   getQuestions: async (filters = {}) => {
     set({ loading: true, error: null });
    
     try {
       const params = new URLSearchParams(filters).toString();
-       console.log(`/cbt/questions?${params}`);
       const res = await api.get(`/cbt/questions?${params}`);
 
       set({ 
@@ -452,11 +543,8 @@ export const useCbtStore = create((set, get) => ({
     }
   },
 
-  // ==================== LEGACY SUPPORT (BACKWARD COMPATIBILITY) ====================
+  // ==================== LEGACY SUPPORT ====================
 
-  /**
-   * Add subject (legacy)
-   */
   addSubject: async (level, name) => {
     set({ loading: true, error: null, message: null });
     try {
@@ -468,7 +556,6 @@ export const useCbtStore = create((set, get) => ({
         loading: false,
       });
 
-      // Refresh exam structure
       await get().getExamStructure();
     } catch (err) {
       console.error("Error adding subject:", err);
@@ -478,10 +565,6 @@ export const useCbtStore = create((set, get) => ({
     }
   },
 
-  /**
-   * Get exam structure (legacy - levels, subjects, topics)
-   * Also serves as the main method for getSubject
-   */
   getExamStructure: async () => {
     set({ loading: true, error: null });
     try {
@@ -504,16 +587,10 @@ export const useCbtStore = create((set, get) => ({
     }
   },
 
-  /**
-   * Alias for backward compatibility - calls getExamStructure
-   */
   getSubject: async () => {
     return await get().getExamStructure();
   },
 
-  /**
-   * Add topic (legacy)
-   */
   addTopic: async (levelId, subjectId, topicName) => {
     set({ loading: true, error: null, message: null });
     try {
@@ -529,7 +606,6 @@ export const useCbtStore = create((set, get) => ({
         loading: false,
       });
 
-      // Refresh exam structure
       await get().getExamStructure();
     } catch (err) {
       console.error("Error adding topic:", err);
@@ -541,9 +617,6 @@ export const useCbtStore = create((set, get) => ({
 
   // ==================== ATTEMPTS & ANALYTICS ====================
 
-  /**
-   * Get all attempts (admin)
-   */
   getAllAttempts: async () => {
     set({ loading: true, error: null });
     try {
@@ -566,9 +639,6 @@ export const useCbtStore = create((set, get) => ({
     }
   },
 
-  /**
-   * Get user attempts
-   */
   getUserAttempts: async (userId) => {
     set({ loading: true, error: null });
     try {
@@ -591,9 +661,6 @@ export const useCbtStore = create((set, get) => ({
     }
   },
 
-  /**
-   * Get attempt summary/analytics
-   */
   getAttemptSummary: async (userId) => {
     set({ loading: true, error: null });
     try {
@@ -615,22 +682,140 @@ export const useCbtStore = create((set, get) => ({
       throw err;
     }
   },
+  // ============================================================================
+// ADD THESE FUNCTIONS TO YOUR cbtStore.jsx
+// ADD THEM AFTER LINE 295 (after getYearSubjects function)
+// BEFORE THE VISIBILITY CONTROL SECTION
+// ============================================================================
+
+  // ==================== 🆕 VISIBILITY CONTROL ====================
+
+  /**
+   * Toggle year visibility (show/hide entire year from students)
+   */
+  toggleYearVisibility: async (examId, year, isAvailable) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.put(
+        `/cbt/exams/${examId}/years/${year}/visibility`,
+        { isAvailable }
+      );
+      
+      set((state) => ({
+        exams: state.exams.map(exam => 
+          exam._id === examId ? res.data.data : exam
+        ),
+        selectedExam: res.data.data,
+        message: res.data.message || `✅ Year ${year} ${isAvailable ? 'shown' : 'hidden'}`,
+        loading: false,
+        error: null,
+      }));
+      
+      return res.data.data;
+    } catch (err) {
+      console.error("Error toggling year visibility:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to update year visibility";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Toggle subject visibility (show/hide specific subject from students)
+   */
+  toggleSubjectVisibility: async (examId, year, subject, isVisible) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.put(
+        `/cbt/exams/${examId}/years/${year}/subjects/${encodeURIComponent(subject)}/visibility`,
+        { isVisible }
+      );
+      
+      set((state) => ({
+        exams: state.exams.map(exam => 
+          exam._id === examId ? res.data.data : exam
+        ),
+        selectedExam: res.data.data,
+        message: res.data.message || `✅ ${subject} ${isVisible ? 'shown' : 'hidden'}`,
+        loading: false,
+        error: null,
+      }));
+      
+      return res.data.data;
+    } catch (err) {
+      console.error("Error toggling subject visibility:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to update subject visibility";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Bulk update visibility for multiple subjects
+   */
+  bulkUpdateVisibility: async (examId, updates) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.post(
+        `/cbt/exams/${examId}/bulk-visibility`,
+        { updates }
+      );
+      
+      set((state) => ({
+        exams: state.exams.map(exam => 
+          exam._id === examId ? res.data.data : exam
+        ),
+        selectedExam: res.data.data,
+        message: res.data.message || `✅ Updated ${updates.length} subjects`,
+        loading: false,
+        error: null,
+      }));
+      
+      return res.data.results;
+    } catch (err) {
+      console.error("Error bulk updating visibility:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to bulk update visibility";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
+  /**
+   * Sync question counts for all subjects in an exam
+   */
+  syncQuestionCounts: async (examId) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await api.post(`/cbt/exams/${examId}/sync-counts`);
+      
+      // Refresh the exams list to get updated counts
+      await get().getExamsForAdmin();
+      
+      set({
+        message: res.data.message || "✅ Question counts synchronized",
+        loading: false,
+        error: null,
+      });
+      
+      return res.data.updates;
+    } catch (err) {
+      console.error("Error syncing counts:", err);
+      const errorMsg = err.response?.data?.message || "❌ Failed to sync question counts";
+      set({ error: errorMsg, loading: false });
+      throw err;
+    }
+  },
+
+// ============================================================================
+// END OF NEW FUNCTIONS
+// ============================================================================
+  
 
   // ==================== UTILITY METHODS ====================
 
-  /**
-   * Clear error message
-   */
   clearError: () => set({ error: null }),
-
-  /**
-   * Clear success message
-   */
   clearMessage: () => set({ message: null }),
 
-  /**
-   * Reset store to initial state
-   */
   reset: () => set({
     exams: [],
     selectedExam: null,

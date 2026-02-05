@@ -1,493 +1,463 @@
-// src/pages/ManageQuestions.jsx
+// src/pages/admin/ManageQuestions.jsx - ENHANCED FOR ADMIN
+// This version allows admins to see and manage ALL questions,
+// including those from years/subjects that are hidden or incomplete
+
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useCbtStore } from "../Store/cbtStore";
 import toast from "react-hot-toast";
-import RichTextEditor from '../Component/RichTextEditor';
 import { 
   FaEdit, 
   FaTrash, 
   FaArrowLeft, 
-  FaImage, 
+  FaFilter,
+  FaSync,
   FaCheckCircle,
-  FaTimesCircle 
+  FaTimesCircle,
+  FaEye,
+  FaEyeSlash
 } from "react-icons/fa";
 
 const ManageQuestions = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
-  const { examId, examName, year, subject, duration } = state || {};
+  
+  const { 
+    getExamsForAdmin,
+    getQuestions, 
+    updateQuestion, 
+    deleteQuestion,
+    syncQuestionCounts,
+    loading 
+  } = useCbtStore();
 
-  const { getQuestions, updateQuestion, deleteQuestion, loading } = useCbtStore();
+  // State
+  const [exams, setExams] = useState([]);
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(null);
+  const [selectedSubject, setSelectedSubject] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [questionCount, setQuestionCount] = useState(0);
   const [editingQuestion, setEditingQuestion] = useState(null);
-  const [formData, setFormData] = useState({
-    question: "",
-    options: [
-      { type: 'text', content: '', label: 'A' },
-      { type: 'text', content: '', label: 'B' },
-      { type: 'text', content: '', label: 'C' },
-      { type: 'text', content: '', label: 'D' }
-    ],
-    answer: "",
-    difficulty: "medium",
-    topic: "",
-    explanation: "",
-  });
-  const [questionImage, setQuestionImage] = useState(null);
-  const [questionImagePreview, setQuestionImagePreview] = useState(null);
 
+  // Load initial data
   useEffect(() => {
-    if (!examName || !year || !subject) {
-      toast.error("Missing exam information");
-      navigate(-1);
-      return;
+    loadExamsForAdmin();
+  }, []);
+
+  // Auto-select if coming from navigation
+  useEffect(() => {
+    if (state?.examId && state?.year && state?.subject && exams.length > 0) {
+      const exam = exams.find(e => e._id === state.examId);
+      if (exam) {
+        setSelectedExam(exam);
+        setSelectedYear(state.year);
+        setSelectedSubject(state.subject);
+      }
     }
-    fetchQuestions();
-  }, [examName, year, subject]);
+  }, [state, exams]);
+
+  // Load questions when filters change
+  useEffect(() => {
+    if (selectedExam && selectedYear && selectedSubject) {
+      fetchQuestions();
+    }
+  }, [selectedExam, selectedYear, selectedSubject]);
+
+  const loadExamsForAdmin = async () => {
+    try {
+      const examsData = await getExamsForAdmin();
+      setExams(examsData || []);
+    } catch (error) {
+      toast.error("Failed to load exams");
+    }
+  };
 
   const fetchQuestions = async () => {
+    if (!selectedExam || !selectedYear || !selectedSubject) return;
+
     try {
       const filters = {
-        examName: examName,
-        year: year,
-        subject: subject      };
+        examName: selectedExam.name,
+        year: selectedYear,
+        subject: selectedSubject
+      };
+      
       const result = await getQuestions(filters);
       setQuestions(result.questions || []);
+      setQuestionCount(result.count || 0);
     } catch (err) {
       console.error("Error fetching questions:", err);
       toast.error("Failed to load questions");
     }
   };
 
-  const handleEdit = (question) => {
-    setEditingQuestion(question._id);
-    
-    // Parse options based on the new structure
-    const parsedOptions = question.options.map((opt, index) => {
-      if (typeof opt === 'object' && opt.type) {
-        return opt;
-      }
-      // Legacy format - plain text options
-      return {
-        type: 'text',
-        content: opt,
-        label: String.fromCharCode(65 + index)
-      };
-    });
+  const handleDelete = async (questionId) => {
+    if (!window.confirm("Are you sure you want to delete this question?")) {
+      return;
+    }
 
-    setFormData({
-      question: question.question || "",
-      options: parsedOptions,
-      answer: question.answer || question.ans || "",
-      difficulty: question.difficulty || "medium",
-      topic: question.topic || "",
-      explanation: question.explanation || "",
-    });
-    
-    setQuestionImagePreview(question.questionImage || null);
-  };
-
-  const handleSave = async () => {
     try {
-      // Validation
-      if (!formData.question || formData.question.trim() === '') {
-        toast.error("Question cannot be empty");
-        return;
-      }
-
-      const hasEmptyOptions = formData.options.some(opt => 
-        opt.type === 'text' && (!opt.content || opt.content.trim() === '')
-      );
-      
-      if (hasEmptyOptions) {
-        toast.error("All options must be filled");
-        return;
-      }
-
-      if (!formData.answer) {
-        toast.error("Please select the correct answer");
-        return;
-      }
-
-      const formDataToSend = new FormData();
-      
-      formDataToSend.append('question', formData.question.trim());
-      formDataToSend.append('answer', formData.answer.toUpperCase());
-      formDataToSend.append('difficulty', formData.difficulty);
-      formDataToSend.append('topic', formData.topic || '');
-      formDataToSend.append('explanation', formData.explanation || '');
-
-      // Options
-      const optionsData = formData.options.map(opt => ({
-        type: opt.type,
-        content: opt.type === 'text' ? opt.content : '',
-        label: opt.label
-      }));
-      formDataToSend.append('options', JSON.stringify(optionsData));
-
-      // Question image (if new image selected)
-      if (questionImage) {
-        formDataToSend.append('questionImage', questionImage);
-      }
-
-      await updateQuestion(editingQuestion, formDataToSend);
-      
-      // Refresh questions list
+      await deleteQuestion(questionId);
+      toast.success("✅ Question deleted successfully");
       await fetchQuestions();
       
-      setEditingQuestion(null);
-      setQuestionImage(null);
-      setQuestionImagePreview(null);
-      toast.success("✅ Question updated successfully!");
-    } catch (err) {
-      console.error("Error updating question:", err);
-      toast.error(err.response?.data?.message || "Failed to update question");
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this question?")) return;
-    
-    try {
-      await deleteQuestion(id);
-      setQuestions((prev) => prev.filter((q) => q._id !== id));
-      toast.success("🗑️ Question deleted successfully!");
-    } catch (err) {
-      console.error("Error deleting question:", err);
+      // Sync counts after deletion
+      if (selectedExam?._id) {
+        await syncQuestionCounts(selectedExam._id);
+      }
+    } catch (error) {
       toast.error("Failed to delete question");
     }
   };
 
-  const handleOptionChange = (index, value) => {
-    const newOptions = [...formData.options];
-    newOptions[index].content = value;
-    setFormData((prev) => ({ ...prev, options: newOptions }));
-  };
+  const handleSyncCounts = async () => {
+    if (!selectedExam) return;
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setQuestionImage(file);
-      setQuestionImagePreview(URL.createObjectURL(file));
+    try {
+      await syncQuestionCounts(selectedExam._id);
+      toast.success("✅ Question counts synced");
+      await loadExamsForAdmin();
+    } catch (error) {
+      toast.error("Failed to sync counts");
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container mt-4 text-center">
-        <div className="spinner-border text-primary" />
-        <p className="mt-2">Loading questions...</p>
-      </div>
+  const getYearsForSelectedExam = () => {
+    if (!selectedExam || !selectedExam.years) return [];
+    return selectedExam.years.map(y => y.year).sort((a, b) => b - a);
+  };
+
+  const getSubjectsForSelectedYear = () => {
+    if (!selectedExam || !selectedYear) return [];
+    
+    const yearObj = selectedExam.years?.find(y => y.year === parseInt(selectedYear));
+    if (!yearObj || !yearObj.subjects) return [];
+    
+    return yearObj.subjects.map(s => ({
+      name: s.name || s,
+      questionCount: s.questionCount || 0,
+      isVisible: s.isVisible !== false
+    }));
+  };
+
+  const getSubjectInfo = () => {
+    if (!selectedExam || !selectedYear || !selectedSubject) return null;
+
+    const yearObj = selectedExam.years?.find(y => y.year === parseInt(selectedYear));
+    if (!yearObj) return null;
+
+    const subject = yearObj.subjects?.find(s => 
+      (s.name || s) === selectedSubject
     );
-  }
+
+    if (!subject) return null;
+
+    const count = subject.questionCount || 0;
+    const isVisible = subject.isVisible !== false;
+    const minQuestions = selectedExam.minimumQuestionsPerSubject || 15;
+    const meetsMinimum = count >= minQuestions;
+
+    return {
+      questionCount: count,
+      isVisible,
+      minQuestions,
+      meetsMinimum,
+      status: isVisible && meetsMinimum ? 'live' :
+              !isVisible && meetsMinimum ? 'hidden-ready' :
+              isVisible && !meetsMinimum ? 'incomplete' :
+              'hidden-incomplete'
+    };
+  };
+
+  const subjectInfo = getSubjectInfo();
 
   return (
-    <div className="container mt-4" style={{ maxWidth: "900px" }}>
-      <div className="card shadow-lg border-0 rounded-4">
-        <div 
-          className="card-header text-white py-3"
-          style={{ background: "#15253a" }}
-        >
-          <div className="d-flex justify-content-between align-items-center">
-            <h4 className="mb-0">
-              Manage Questions
-            </h4>
-            <button
-              className="btn btn-outline-light btn-sm"
-              onClick={() => navigate(-1)}
-            >
-              <FaArrowLeft className="me-2" />
-              Back
-            </button>
-          </div>
-          <div className="mt-2">
-            <small>
-              {examName?.toUpperCase()} | Year {year} | {subject}
-            </small>
+    <div className="container mt-4">
+      {/* Header */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <button 
+            className="btn btn-sm btn-outline-secondary mb-2"
+            onClick={() => navigate(-1)}
+          >
+            <FaArrowLeft /> Back
+          </button>
+          <h3>Manage Questions</h3>
+        </div>
+        <div className="btn-group">
+          <button
+            className="btn btn-primary"
+            onClick={handleSyncCounts}
+            disabled={!selectedExam || loading}
+          >
+            <FaSync className={loading ? "fa-spin" : ""} /> Sync Counts
+          </button>
+          <button
+            className="btn btn-success"
+            onClick={() => navigate('/add_question', {
+              state: {
+                examId: selectedExam?._id,
+                examName: selectedExam?.name,
+                year: selectedYear,
+                subject: selectedSubject
+              }
+            })}
+            disabled={!selectedExam || !selectedYear || !selectedSubject}
+          >
+            Add Question
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card mb-4">
+        <div className="card-header bg-light">
+          <FaFilter className="me-2" />
+          <strong>Filters</strong>
+          <small className="text-muted ms-2">
+            (Shows ALL exams, years, and subjects - including hidden ones)
+          </small>
+        </div>
+        <div className="card-body">
+          <div className="row g-3">
+            {/* Exam Selection */}
+            <div className="col-md-4">
+              <label className="form-label">Exam</label>
+              <select
+                className="form-select"
+                value={selectedExam?._id || ''}
+                onChange={(e) => {
+                  const exam = exams.find(ex => ex._id === e.target.value);
+                  setSelectedExam(exam || null);
+                  setSelectedYear(null);
+                  setSelectedSubject(null);
+                }}
+              >
+                <option value="">Select Exam</option>
+                {exams.map(exam => (
+                  <option key={exam._id} value={exam._id}>
+                    {exam.displayName} ({exam.name})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Year Selection */}
+            <div className="col-md-4">
+              <label className="form-label">Year</label>
+              <select
+                className="form-select"
+                value={selectedYear || ''}
+                onChange={(e) => {
+                  setSelectedYear(e.target.value ? parseInt(e.target.value) : null);
+                  setSelectedSubject(null);
+                }}
+                disabled={!selectedExam}
+              >
+                <option value="">Select Year</option>
+                {getYearsForSelectedExam().map(year => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              {selectedExam && getYearsForSelectedExam().length === 0 && (
+                <small className="text-danger">No years added yet</small>
+              )}
+            </div>
+
+            {/* Subject Selection */}
+            <div className="col-md-4">
+              <label className="form-label">Subject</label>
+              <select
+                className="form-select"
+                value={selectedSubject || ''}
+                onChange={(e) => setSelectedSubject(e.target.value || null)}
+                disabled={!selectedYear}
+              >
+                <option value="">Select Subject</option>
+                {getSubjectsForSelectedYear().map((subject, idx) => (
+                  <option key={idx} value={subject.name}>
+                    {subject.name} ({subject.questionCount} Qs)
+                    {!subject.isVisible && ' 🔒'}
+                  </option>
+                ))}
+              </select>
+              {selectedYear && getSubjectsForSelectedYear().length === 0 && (
+                <small className="text-danger">No subjects added yet</small>
+              )}
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="card-body p-4">
-          {/* Stats */}
-          <div className="row mb-4">
-            <div className="col-md-3">
-              <div className="card bg-primary bg-opacity-10 border-primary">
-                <div className="card-body text-center">
-                  <h3 className="mb-0">{questions.length}</h3>
-                  <small>Total Questions</small>
-                </div>
-              </div>
+      {/* Subject Info Card */}
+      {subjectInfo && (
+        <div className={`alert ${
+          subjectInfo.status === 'live' ? 'alert-success' :
+          subjectInfo.status === 'hidden-ready' ? 'alert-info' :
+          subjectInfo.status === 'incomplete' ? 'alert-warning' :
+          'alert-secondary'
+        }`}>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>
+              <strong>{selectedSubject}</strong>
+              <span className="ms-3">
+                {subjectInfo.isVisible ? (
+                  <>
+                    <FaEye className="me-1" /> Visible to Students
+                  </>
+                ) : (
+                  <>
+                    <FaEyeSlash className="me-1" /> Hidden from Students
+                  </>
+                )}
+              </span>
+              <span className="ms-3">
+                {questionCount} / {subjectInfo.minQuestions} questions
+                {subjectInfo.meetsMinimum ? (
+                  <FaCheckCircle className="text-success ms-1" />
+                ) : (
+                  <FaTimesCircle className="text-danger ms-1" />
+                )}
+              </span>
             </div>
-            <div className="col-md-3">
-              <div className="card bg-success bg-opacity-10 border-success">
-                <div className="card-body text-center">
-                  <h3 className="mb-0">{questions.filter(q => q.difficulty === 'easy').length}</h3>
-                  <small>Easy</small>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3">
-              <div className="card bg-warning bg-opacity-10 border-warning">
-                <div className="card-body text-center">
-                  <h3 className="mb-0">{questions.filter(q => q.difficulty === 'medium').length}</h3>
-                  <small>Medium</small>
-                </div>
-              </div>
-            </div>
-            <div className="col-md-3">
-              <div className="card bg-danger bg-opacity-10 border-danger">
-                <div className="card-body text-center">
-                  <h3 className="mb-0">{questions.filter(q => q.difficulty === 'hard').length}</h3>
-                  <small>Hard</small>
-                </div>
-              </div>
+            <div>
+              {subjectInfo.status === 'live' && (
+                <span className="badge bg-success">✓ Live</span>
+              )}
+              {subjectInfo.status === 'hidden-ready' && (
+                <span className="badge bg-info">🔒 Hidden (Ready to Publish)</span>
+              )}
+              {subjectInfo.status === 'incomplete' && (
+                <span className="badge bg-warning">
+                  ⚠ Need {subjectInfo.minQuestions - questionCount} more questions
+                </span>
+              )}
+              {subjectInfo.status === 'hidden-incomplete' && (
+                <span className="badge bg-secondary">🔒 Hidden & Incomplete</span>
+              )}
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Questions List */}
-          {questions.length === 0 ? (
-            <div className="text-center py-5">
-              <p className="text-muted">No questions found for this subject.</p>
-              <button 
-                className="btn btn-primary"
-                onClick={() => navigate('/add_question')}
-              >
-                Add First Question
-              </button>
-            </div>
-          ) : (
-            <div className="list-group">
-              {questions.map((q, idx) => (
-                <div
-                  key={q._id}
-                  className="list-group-item mb-3 p-3 border rounded-3 shadow-sm"
-                >
-                  {editingQuestion === q._id ? (
-                    /* Edit Modal */
-                    <div
-                      className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
-                      style={{ background: "rgba(0,0,0,0.7)", zIndex: 2000, overflowY: "auto" }}
-                    >
-                      <div 
-                        className="card p-4 shadow-lg my-4" 
-                        style={{ maxWidth: "700px", width: "90%", maxHeight: "90vh", overflowY: "auto" }}
-                      >
-                        <h5 className="mb-3 text-center">Edit Question</h5>
-
-                        {/* Question */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">Question</label>
-                          <RichTextEditor
-                            value={formData.question}
-                            onChange={(content) => setFormData(prev => ({ ...prev, question: content }))}
-                            height="150px"
-                          />
-                        </div>
-
-                        {/* Question Image */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">
-                            <FaImage className="me-2" />
-                            Question Image
-                          </label>
-                          {questionImagePreview && (
-                            <div className="text-center mb-2">
-                              <img
-                                src={questionImagePreview}
-                                alt="Question"
-                                className="img-fluid rounded"
-                                style={{ maxHeight: "200px" }}
-                              />
-                            </div>
-                          )}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="form-control"
-                            onChange={handleImageChange}
-                          />
-                        </div>
-
-                        {/* Options */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">Options</label>
-                          {formData.options.map((opt, i) => (
-                            <div key={i} className="mb-2">
-                              <label className="form-label">{opt.label}.</label>
-                              {opt.type === 'text' ? (
-                                <input
-                                  value={opt.content}
-                                  onChange={(e) => handleOptionChange(i, e.target.value)}
-                                  placeholder={`Option ${opt.label}`}
-                                  className="form-control"
-                                />
-                              ) : (
-                                <div className="text-muted">Image option (cannot edit here)</div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Correct Answer */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">Correct Answer</label>
-                          <select
-                            name="answer"
-                            value={formData.answer}
-                            onChange={(e) => setFormData(prev => ({ ...prev, answer: e.target.value }))}
-                            className="form-select"
-                          >
-                            <option value="">-- Select Answer --</option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                          </select>
-                        </div>
-
-                        {/* Topic */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">Topic</label>
-                          <input
-                            name="topic"
-                            value={formData.topic}
-                            onChange={(e) => setFormData(prev => ({ ...prev, topic: e.target.value }))}
-                            placeholder="Topic"
-                            className="form-control"
-                          />
-                        </div>
-
-                        {/* Difficulty */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">Difficulty</label>
-                          <select
-                            name="difficulty"
-                            value={formData.difficulty}
-                            onChange={(e) => setFormData(prev => ({ ...prev, difficulty: e.target.value }))}
-                            className="form-select"
-                          >
-                            <option value="easy">Easy</option>
-                            <option value="medium">Medium</option>
-                            <option value="hard">Hard</option>
-                          </select>
-                        </div>
-
-                        {/* Explanation */}
-                        <div className="mb-3">
-                          <label className="form-label fw-bold">Explanation</label>
-                          <RichTextEditor
-                            value={formData.explanation}
-                            onChange={(content) => setFormData(prev => ({ ...prev, explanation: content }))}
-                            height="100px"
-                          />
-                        </div>
-
-                        {/* Buttons */}
-                        <div className="d-flex justify-content-center gap-3">
-                          <button 
-                            onClick={handleSave} 
-                            className="btn btn-success px-4"
-                            disabled={loading}
-                          >
-                            {loading ? 'Saving...' : 'Save'}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingQuestion(null);
-                              setQuestionImage(null);
-                              setQuestionImagePreview(null);
-                            }}
-                            className="btn btn-secondary px-4"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    /* Display Question */
-                    <>
-                      <div className="d-flex justify-content-between align-items-start mb-2">
-                        <div className="flex-grow-1">
-                          <p className="mb-2">
-                            <strong>Q{idx + 1}:</strong> 
-                            <span dangerouslySetInnerHTML={{ __html: q.question }} />
-                          </p>
-                        </div>
+      {/* Questions List */}
+      {loading ? (
+        <div className="text-center py-5">
+          <div className="spinner-border text-primary" />
+          <p className="mt-2">Loading questions...</p>
+        </div>
+      ) : !selectedExam || !selectedYear || !selectedSubject ? (
+        <div className="card text-center py-5">
+          <div className="card-body">
+            <FaFilter size={60} className="text-muted mb-3" />
+            <h5>Select Exam, Year, and Subject</h5>
+            <p className="text-muted">Choose filters above to view questions</p>
+          </div>
+        </div>
+      ) : questions.length === 0 ? (
+        <div className="card text-center py-5">
+          <div className="card-body">
+            <h5>No Questions Found</h5>
+            <p className="text-muted">
+              This subject doesn't have any questions yet
+            </p>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/add_question', {
+                state: {
+                  examId: selectedExam._id,
+                  examName: selectedExam.name,
+                  year: selectedYear,
+                  subject: selectedSubject
+                }
+              })}
+            >
+              Add First Question
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="card">
+          <div className="card-header bg-light d-flex justify-content-between align-items-center">
+            <span>
+              <strong>{questionCount} Questions</strong>
+            </span>
+            <span className="text-muted">
+              {selectedExam.displayName} • {selectedYear} • {selectedSubject}
+            </span>
+          </div>
+          <div className="card-body">
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th width="50">#</th>
+                    <th>Question</th>
+                    <th width="100">Difficulty</th>
+                    <th width="100">Topic</th>
+                    <th width="150">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {questions.map((q, index) => (
+                    <tr key={q._id}>
+                      <td>{index + 1}</td>
+                      <td>
+                        <div 
+                          dangerouslySetInnerHTML={{ 
+                            __html: q.question.substring(0, 100) + (q.question.length > 100 ? '...' : '')
+                          }} 
+                        />
+                        {q.questionImage && (
+                          <span className="badge bg-info ms-2">Has Image</span>
+                        )}
+                      </td>
+                      <td>
                         <span className={`badge ${
                           q.difficulty === 'easy' ? 'bg-success' :
-                          q.difficulty === 'medium' ? 'bg-warning' :
-                          'bg-danger'
+                          q.difficulty === 'hard' ? 'bg-danger' :
+                          'bg-warning'
                         }`}>
                           {q.difficulty}
                         </span>
-                      </div>
-
-                      {q.questionImage && (
-                        <div className="text-center mb-3">
-                          <img
-                            src={q.questionImage}
-                            alt="question"
-                            className="img-fluid rounded"
-                            style={{ maxHeight: "200px" }}
-                          />
+                      </td>
+                      <td>
+                        <small className="text-muted">{q.topic || '-'}</small>
+                      </td>
+                      <td>
+                        <div className="btn-group btn-group-sm">
+                          <button
+                            className="btn btn-outline-primary"
+                            onClick={() => navigate('/edit_question', { 
+                              state: { question: q, examId: selectedExam._id, examName: selectedExam.name, year: selectedYear, subject: selectedSubject }
+                            })}
+                          >
+                            <FaEdit /> Edit
+                          </button>
+                          <button
+                            className="btn btn-outline-danger"
+                            onClick={() => handleDelete(q._id)}
+                          >
+                            <FaTrash /> Delete
+                          </button>
                         </div>
-                      )}
-
-                      <ul className="list-unstyled mb-2">
-                        {q.options.map((opt, i) => {
-                          const optionContent = typeof opt === 'object' ? opt.content : opt;
-                          const isCorrect = (typeof opt === 'object' ? opt.label : String.fromCharCode(65 + i)) === q.answer?.toUpperCase();
-                          
-                          return (
-                            <li
-                              key={i}
-                              className={`p-2 mb-1 rounded ${isCorrect ? 'bg-success bg-opacity-10 text-success fw-bold' : ''}`}
-                            >
-                              {isCorrect && <FaCheckCircle className="me-2" />}
-                              {String.fromCharCode(65 + i)}. {optionContent}
-                            </li>
-                          );
-                        })}
-                      </ul>
-
-                      {q.topic && (
-                        <p className="text-muted small mb-2">
-                          <strong>Topic:</strong> {q.topic}
-                        </p>
-                      )}
-
-                      {q.explanation && (
-                        <div className="alert alert-info small mb-2">
-                          <strong>Explanation:</strong>
-                          <div dangerouslySetInnerHTML={{ __html: q.explanation }} />
-                        </div>
-                      )}
-
-                      <div className="d-flex gap-2 mt-3">
-                        <button
-                          onClick={() => handleEdit(q)}
-                          className="btn btn-outline-primary btn-sm"
-                        >
-                          <FaEdit className="me-1" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(q._id)}
-                          className="btn btn-outline-danger btn-sm"
-                        >
-                          <FaTrash className="me-1" />
-                          Delete
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
         </div>
+      )}
+
+      {/* Info Alert */}
+      <div className="alert alert-info mt-4">
+        <strong>ℹ️ Admin Mode:</strong> You can see and edit ALL questions, including those from hidden or incomplete subjects.
+        Questions are automatically counted when you add or delete them.
       </div>
     </div>
   );

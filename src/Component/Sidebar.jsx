@@ -49,6 +49,10 @@ const menu = [
        {
         pageName: "Manage Exams",
         pageLink: "/manage_exam",
+      }
+        ,{
+        pageName: "Manage Years and Subjects",
+        pageLink: "/manage_years_subjects",
       },
        {
         pageName: "Create Exam",

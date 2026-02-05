@@ -1,11 +1,12 @@
-// src/pages/Question.jsx
+// src/pages/Question.jsx - UPDATED FOR ADMIN
 import React, { useEffect, useState } from "react";
 import { useCbtStore } from "../Store/cbtStore";
 import { useNavigate } from "react-router-dom";
-import { FaBook, FaCalendar, FaCheckSquare, FaEye } from "react-icons/fa";
+import { FaBook, FaCalendar, FaCheckSquare, FaEye, FaEyeSlash } from "react-icons/fa";
 
 function Question() {
-  const { exams, getExams, loading } = useCbtStore();
+  // 🆕 UPDATED: Use getExamsForAdmin to see all exams including hidden subjects
+  const { exams, getExamsForAdmin, loading } = useCbtStore();
   const [selectedExam, setSelectedExam] = useState(null);
   const [selectedYear, setSelectedYear] = useState("");
   const [subjects, setSubjects] = useState([]);
@@ -13,7 +14,8 @@ function Question() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    getExams();
+    // 🆕 UPDATED: Load exams in admin mode
+    getExamsForAdmin();
   }, []);
 
   const handleExamChange = (e) => {
@@ -33,19 +35,21 @@ function Question() {
 
     if (selectedExam) {
       const yearObj = selectedExam.years?.find((y) => y.year === year);
-      // Extract subject names from the year's subjects array
-      const subjectNames = yearObj?.subjects.map(s => 
-        typeof s === 'string' ? s : s.name
-      ) || [];
-      setSubjects(subjectNames);
+      // 🆕 UPDATED: Extract subject data including visibility info
+      const subjectData = yearObj?.subjects.map(s => ({
+        name: typeof s === 'string' ? s : s.name,
+        questionCount: s.questionCount || 0,
+        isVisible: s.isVisible !== false
+      })) || [];
+      setSubjects(subjectData);
     }
   };
 
-  const handleSubjectToggle = (subject) => {
+  const handleSubjectToggle = (subjectName) => {
     setSelectedSubjects((prev) =>
-      prev.includes(subject)
-        ? prev.filter((s) => s !== subject)
-        : [...prev, subject]
+      prev.includes(subjectName)
+        ? prev.filter((s) => s !== subjectName)
+        : [...prev, subjectName]
     );
   };
 
@@ -84,6 +88,11 @@ function Question() {
         </div>
 
         <div className="card-body p-4">
+          {/* 🆕 UPDATED: Added admin notice */}
+          <div className="alert alert-info mb-4">
+            <strong>ℹ️ Admin Mode:</strong> You can see all exams, years, and subjects - including hidden ones.
+          </div>
+
           {loading ? (
             <div className="text-center py-4">
               <div className="spinner-border text-primary" />
@@ -134,6 +143,8 @@ function Question() {
                     {selectedExam.years?.map((yearObj) => (
                       <option key={yearObj.year} value={yearObj.year}>
                         {yearObj.year} ({yearObj.subjects?.length || 0} subjects)
+                        {/* 🆕 UPDATED: Show if year is unavailable */}
+                        {yearObj.isAvailable === false && ' 🔒'}
                       </option>
                     ))}
                   </select>
@@ -154,21 +165,32 @@ function Question() {
                   </label>
                   <div className="card">
                     <div className="card-body">
-                      {subjects.map((subj, idx) => (
+                      {subjects.map((subject, idx) => (
                         <div key={idx} className="form-check mb-2">
                           <input
                             type="checkbox"
                             className="form-check-input"
                             id={`subject-${idx}`}
-                            value={subj}
-                            checked={selectedSubjects.includes(subj)}
-                            onChange={() => handleSubjectToggle(subj)}
+                            value={subject.name}
+                            checked={selectedSubjects.includes(subject.name)}
+                            onChange={() => handleSubjectToggle(subject.name)}
                           />
                           <label 
-                            className="form-check-label" 
+                            className="form-check-label d-flex align-items-center justify-content-between w-100" 
                             htmlFor={`subject-${idx}`}
                           >
-                            {subj}
+                            <span>
+                              {subject.name}
+                              {/* 🆕 UPDATED: Show visibility status */}
+                              {!subject.isVisible && (
+                                <span className="badge bg-secondary ms-2">
+                                  <FaEyeSlash /> Hidden
+                                </span>
+                              )}
+                            </span>
+                            <small className="text-muted">
+                              {subject.questionCount} questions
+                            </small>
                           </label>
                         </div>
                       ))}

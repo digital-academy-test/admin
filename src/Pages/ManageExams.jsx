@@ -1,4 +1,4 @@
-// src/pages/admin/ManageExams.jsx
+// src/pages/admin/ManageExams.jsx - UPDATED
 import React, { useState, useEffect } from "react";
 import { useCbtStore } from "../Store/cbtStore";
 import { useNavigate } from "react-router-dom";
@@ -12,16 +12,19 @@ import {
   FaEye,
   FaClock,
   FaCheckCircle,
-  FaTimesCircle
+  FaTimesCircle,
+  FaCog  // 🆕 Added for manage years/subjects button
 } from "react-icons/fa";
 
 const ManageExams = () => {
-  const { exams, getExams, deleteExam, updateExam, loading } = useCbtStore();
+  // 🆕 UPDATED: Use getExamsForAdmin to see all data
+  const { exams, getExamsForAdmin, deleteExam, updateExam, loading } = useCbtStore();
   const navigate = useNavigate();
   const [selectedExam, setSelectedExam] = useState(null);
 
   useEffect(() => {
-    getExams();
+    // 🆕 UPDATED: Load exams with admin mode
+    getExamsForAdmin();
   }, []);
 
   const handleDelete = async (examId, examName) => {
@@ -58,7 +61,7 @@ const ManageExams = () => {
         <button
           className="btn text-white"
           style={{ background: "#15253a" }}
-          onClick={() => navigate('/create_exam')}
+          onClick={() => navigate('/add_exam')}
         >
           <FaPlus className="me-2" />
           Create New Exam
@@ -78,7 +81,7 @@ const ManageExams = () => {
             <p className="text-muted">Create your first exam to get started</p>
             <button
               className="btn btn-primary"
-              onClick={() => navigate('/create_exam')}
+              onClick={() => navigate('/add_exam')}
             >
               Create Exam
             </button>
@@ -169,12 +172,13 @@ const ManageExams = () => {
                     >
                       <FaEye />
                     </button>
+                    {/* 🆕 UPDATED: Navigate to ManageYearsAndSubjects for visibility control */}
                     <button
                       className="btn btn-sm btn-outline-success"
-                      onClick={() => navigate('/add_year', { state: { exam } })}
-                      title="Add Year"
+                      onClick={() => navigate('/manage_years_subjects', { state: { exam } })}
+                      title="Manage Years & Subjects"
                     >
-                      <FaCalendar />
+                      <FaCog />
                     </button>
                     <button
                       className="btn btn-sm btn-outline-warning"
@@ -315,16 +319,17 @@ const ManageExams = () => {
                 >
                   Close
                 </button>
+                {/* 🆕 UPDATED: Navigate to ManageYearsAndSubjects */}
                 <button 
                   className="btn text-white"
                   style={{ background: "#15253a" }}
                   onClick={() => {
                     setSelectedExam(null);
-                    navigate('/add_year', { state: { exam: selectedExam } });
+                    navigate('/manage_years_subjects', { state: { exam: selectedExam } });
                   }}
                 >
-                  <FaPlus className="me-2" />
-                  Add Year
+                  <FaCog className="me-2" />
+                  Manage Years & Subjects
                 </button>
               </div>
             </div>

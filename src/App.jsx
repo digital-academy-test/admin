@@ -19,7 +19,7 @@ import Courses from "./Pages/Course";
 import ManageInterests from "./Pages/ManageInterests";
 import Question from "./Pages/Question";
 import ManageQuestion from "./Pages/ManageQuestion";
-import CreatePost from './Pages/CreatePost'
+import CreatePost from './Pages/CreatePost';
 import ManageBlogs from "./Pages/ManageBlogs";
 import EditCourse from "./Pages/EditCourse";
 import InstructorCourseView from "./Pages/InstructorCourseView";
@@ -33,17 +33,19 @@ import ManageExams from "./Pages/ManageExams";
 import EditExam from "./Pages/EditExam";
 import BlogDetail from "./Pages/BlogDetail";
 import InstructorSectionView from "./Pages/InstructorSectionView";
+import ManageYearsAndSubjects from "./Pages/ManageYearsAndSubjects";
+import VisibilityControl from "./Pages/VisibilityControl";
 
 function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  useIdleLogout(10 * 60 * 1000); // ✅ Always safe now
+  useIdleLogout(10 * 60 * 1000);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   const closeSidebar = () => setIsSidebarOpen(false);
 
   return (
     <>
-    <Toaster position="top-right" />
+      <Toaster position="top-right" />
       <Header onToggleSidebar={toggleSidebar} />
       <main className="main-container">
         <div className={`sidebar-drawer Side-menu-container ${isSidebarOpen ? "open" : ""}`}>
@@ -56,33 +58,261 @@ function Layout() {
 
         <section className="Main-content-container">
           <Routes>
-            <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-            <Route path="/add_role" element={<ProtectedRoute><AddRole /></ProtectedRoute>} />
-            <Route path="/add_staff" element={<ProtectedRoute><AddStaff /></ProtectedRoute>} />
-            <Route path="/add_question" element={<ProtectedRoute><AddQuestion /></ProtectedRoute>} />
-             <Route path="/questions" element={<ProtectedRoute><Question /></ProtectedRoute>} />
-             <Route path="/add_year" element={<ProtectedRoute><AddYear/></ProtectedRoute>} />
-             <Route path="/manage_exam" element={<ProtectedRoute><ManageExams/></ProtectedRoute>} />
-              <Route path="/edit_exam/:examId" element={<ProtectedRoute><EditExam/></ProtectedRoute>} />
+            {/* ============================================ */}
+            {/*    HOME & PROFILE (No specific feature)     */}
+            {/* ============================================ */}
+            <Route 
+              path="/home" 
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <StaffProfile />
+                </ProtectedRoute>
+              } 
+            />
 
-             <Route path="/manage_question" element={<ProtectedRoute><ManageQuestion/></ProtectedRoute>} />
-              <Route path="/add_exam" element={<ProtectedRoute><CreateExam/></ProtectedRoute>} />
-            <Route path="/add_subject" element={<ProtectedRoute><AddSubject /></ProtectedRoute>} />
-             <Route path="/staff" element={<ProtectedRoute><StaffManagement/></ProtectedRoute>} />
-             <Route path="/profile" element={<ProtectedRoute><StaffProfile/></ProtectedRoute>} />
-            <Route path="/add_topic" element={<ProtectedRoute><AddTopic /></ProtectedRoute>} />
-            <Route path="/start_course" element={<ProtectedRoute><AddCourse /></ProtectedRoute>} />
-            <Route path="/interests" element={<ProtectedRoute><ManageInterests /></ProtectedRoute>} />
-            <Route path="/courses" element={<ProtectedRoute><Courses/></ProtectedRoute>} />
-            <Route path="/create_blog" element={<ProtectedRoute><CreatePost/></ProtectedRoute>} />
-            <Route path="/blog/:id" element={<ProtectedRoute><BlogDetail/></ProtectedRoute>} />
-             <Route path="/plans" element={<ProtectedRoute><PlansAdmin/></ProtectedRoute>} />
-             <Route path="/manage_post" element={<ProtectedRoute><ManageBlogs/></ProtectedRoute>} />
-            <Route path="/add_section/:id" element={<ProtectedRoute><AddSection /></ProtectedRoute>} />
-            <Route path="/edit_course/:id" element={<ProtectedRoute><EditCourse /></ProtectedRoute>} />
-            <Route path="/course/:courseId/section/:sectionId" element={<ProtectedRoute><InstructorSectionView /></ProtectedRoute>} />
-            <Route path="/course/:id/stats" element={<ProtectedRoute><InstructorCourseView /></ProtectedRoute>} />
-            <Route path="*" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            {/* ============================================ */}
+            {/*           ROLE MANAGEMENT                   */}
+            {/* ============================================ */}
+            <Route 
+              path="/add_role" 
+              element={
+                <ProtectedRoute requiredFeature="Add Role">
+                  <AddRole />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* ============================================ */}
+            {/*           STAFF MANAGEMENT                  */}
+            {/* ============================================ */}
+            <Route 
+              path="/add_staff" 
+              element={
+                <ProtectedRoute requiredFeature="Add Staff">
+                  <AddStaff />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/staff" 
+              element={
+                <ProtectedRoute requiredFeature="Staff Management">
+                  <StaffManagement />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* ============================================ */}
+            {/*           CBT MANAGEMENT                    */}
+            {/* ============================================ */}
+            <Route 
+              path="/add_subject" 
+              element={
+                <ProtectedRoute requiredFeature="Add Subject">
+                  <AddSubject />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add_topic" 
+              element={
+                <ProtectedRoute requiredFeature="Add Topic">
+                  <AddTopic />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add_question" 
+              element={
+                <ProtectedRoute requiredFeature="Add Question">
+                  <AddQuestion />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/questions" 
+              element={
+                <ProtectedRoute requiredFeature="Questions Management">
+                  <Question />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/manage_question" 
+              element={
+                <ProtectedRoute requiredFeature="Questions Management">
+                  <ManageQuestion />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add_exam" 
+              element={
+                <ProtectedRoute requiredFeature="Create Exam">
+                  <CreateExam />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add_year" 
+              element={
+                <ProtectedRoute requiredFeature="Add Year">
+                  <AddYear />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/manage_exam" 
+              element={
+                <ProtectedRoute requiredFeature="Manage Exams">
+                  <ManageExams />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/edit_exam/:examId" 
+              element={
+                <ProtectedRoute requiredFeature="Manage Exams">
+                  <EditExam />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/manage_years_subjects" 
+              element={
+                <ProtectedRoute requiredFeature="Manage Years and Subjects">
+                  <ManageYearsAndSubjects />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/visibility_control" 
+              element={
+                <ProtectedRoute requiredFeature="Visibility Control">
+                  <VisibilityControl />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* ============================================ */}
+            {/*           COURSE MANAGEMENT                 */}
+            {/* ============================================ */}
+            <Route 
+              path="/start_course" 
+              element={
+                <ProtectedRoute requiredFeature="Start Course">
+                  <AddCourse />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/courses" 
+              element={
+                <ProtectedRoute requiredFeature="Courses">
+                  <Courses />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/add_section/:id" 
+              element={
+                <ProtectedRoute requiredFeature="Start Course">
+                  <AddSection />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/edit_course/:id" 
+              element={
+                <ProtectedRoute requiredFeature="Courses">
+                  <EditCourse />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/course/:courseId/section/:sectionId" 
+              element={
+                <ProtectedRoute requiredFeature="Courses">
+                  <InstructorSectionView />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/course/:id/stats" 
+              element={
+                <ProtectedRoute requiredFeature="Courses">
+                  <InstructorCourseView />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/interests" 
+              element={
+                <ProtectedRoute requiredFeature="Manage interests">
+                  <ManageInterests />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* ============================================ */}
+            {/*           BLOG MANAGEMENT                   */}
+            {/* ============================================ */}
+            <Route 
+              path="/create_blog" 
+              element={
+                <ProtectedRoute requiredFeature="Add  Blog post">
+                  <CreatePost />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/manage_post" 
+              element={
+                <ProtectedRoute requiredFeature="Blog Posts">
+                  <ManageBlogs />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/blog/:id" 
+              element={
+                <ProtectedRoute requiredFeature="Blog Posts">
+                  <BlogDetail />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* ============================================ */}
+            {/*           PLAN MANAGEMENT                   */}
+            {/* ============================================ */}
+            <Route 
+              path="/plans" 
+              element={
+                <ProtectedRoute requiredFeature="Plans">
+                  <PlansAdmin />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* ============================================ */}
+            {/*           FALLBACK ROUTE                    */}
+            {/* ============================================ */}
+            <Route 
+              path="*" 
+              element={
+                <ProtectedRoute>
+                  <Home />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </section>
       </main>
@@ -94,7 +324,6 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* 👇 Put login here instead of conditional rendering */}
         <Route path="/" element={<Login />} />
         <Route path="/*" element={<Layout />} />
       </Routes>
