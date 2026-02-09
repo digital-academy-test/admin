@@ -268,7 +268,7 @@ function Layout() {
             <Route 
               path="/create_blog" 
               element={
-                <ProtectedRoute requiredFeature="Add  Blog post">
+                <ProtectedRoute requiredFeature="Add Blog post">
                   <CreatePost />
                 </ProtectedRoute>
               } 

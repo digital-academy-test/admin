@@ -8,12 +8,13 @@ import RichTextEditor from '../Component/RichTextEditor';
 const AddQuestion = () => {
   const { 
     exams, 
-    getExams, 
+    getExamsForAdmin, 
     examStructure, 
     getExamStructure, 
     addQuestion, 
     loading 
   } = useCbtStore();
+
 
   const [formData, setFormData] = useState({
     question: "",
@@ -58,7 +59,7 @@ const AddQuestion = () => {
   const [availableTopics, setAvailableTopics] = useState([]);
 
   useEffect(() => {
-    getExams();
+    getExamsForAdmin();
     getExamStructure();
   }, []);
 
