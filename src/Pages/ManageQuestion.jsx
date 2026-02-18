@@ -431,7 +431,7 @@ const ManageQuestions = () => {
                         <div className="btn-group btn-group-sm">
                           <button
                             className="btn btn-outline-primary"
-                            onClick={() => navigate('/edit_question', { 
+                            onClick={() => navigate(`/edit_question/${q._id}`, { 
                               state: { question: q, examId: selectedExam._id, examName: selectedExam.name, year: selectedYear, subject: selectedSubject }
                             })}
                           >

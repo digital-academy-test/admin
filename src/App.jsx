@@ -35,6 +35,7 @@ import BlogDetail from "./Pages/BlogDetail";
 import InstructorSectionView from "./Pages/InstructorSectionView";
 import ManageYearsAndSubjects from "./Pages/ManageYearsAndSubjects";
 import VisibilityControl from "./Pages/VisibilityControl";
+import EditQuestion from "./Pages/EditQuestion";
 
 function Layout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -153,6 +154,14 @@ function Layout() {
                 </ProtectedRoute>
               } 
             />
+              <Route 
+              path="/edit_question/:id" 
+              element={
+                <ProtectedRoute requiredFeature="Questions Management">
+                  <EditQuestion />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/add_exam" 
               element={
@@ -189,7 +198,7 @@ function Layout() {
               path="/manage_years_subjects" 
               element={
                 <ProtectedRoute requiredFeature="Manage Years and Subjects">
-                  <ManageYearsAndSubjects />
+                  <VisibilityControl />
                 </ProtectedRoute>
               } 
             />

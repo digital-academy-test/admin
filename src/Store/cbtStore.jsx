@@ -590,30 +590,38 @@ export const useCbtStore = create((set, get) => ({
   getSubject: async () => {
     return await get().getExamStructure();
   },
+// ============================================================
+// UPDATED addTopic function for cbtStore.jsx
+// Replace the existing addTopic function (around line 594-616)
+// ============================================================
 
-  addTopic: async (levelId, subjectId, topicName) => {
-    set({ loading: true, error: null, message: null });
-    try {
-      const res = await api.post('/cbt/addtopic', {
-        levelId,
-        subjectId,
-        topicName,
-      });
+addTopic: async (level, subjectName, topics) => {
+  set({ loading: true, error: null, message: null });
+  try {
+    // ✅ FIXED: Send data in the format backend expects
+    const res = await api.post('/cbt/addtopic', {
+      level,        // Level NAME (e.g., "SS1")
+      subjectName,  // Subject NAME (e.g., "Mathematics")
+      topics,       // Array of topic objects (e.g., [{ name: "Algebra" }])
+    });
 
-      set({
-        message: res.data.message || "✅ Topic added successfully",
-        error: null,
-        loading: false,
-      });
+    set({
+      message: res.data.message || "✅ Topic added successfully",
+      error: null,
+      loading: false,
+    });
 
-      await get().getExamStructure();
-    } catch (err) {
-      console.error("Error adding topic:", err);
-      const errorMsg = err.response?.data?.message || "❌ Failed to add topic";
-      set({ error: errorMsg, loading: false });
-      throw err;
-    }
-  },
+    // Reload exam structure to show the new topic
+    await get().getExamStructure();
+    
+    return res.data;
+  } catch (err) {
+    console.error("Error adding topic:", err);
+    const errorMsg = err.response?.data?.message || "❌ Failed to add topic";
+    set({ error: errorMsg, loading: false });
+    throw err;
+  }
+},
 
   // ==================== ATTEMPTS & ANALYTICS ====================
 
