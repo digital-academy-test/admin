@@ -205,8 +205,8 @@ function Layout() {
             <Route 
               path="/visibility_control" 
               element={
-                <ProtectedRoute requiredFeature="Visibility Control">
-                  <VisibilityControl />
+                <ProtectedRoute requiredFeature="Manage Years and Subjects">
+                  <ManageYearsAndSubjects />
                 </ProtectedRoute>
               } 
             />
