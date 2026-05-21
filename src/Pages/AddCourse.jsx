@@ -32,12 +32,40 @@ console.log("🧑‍💼 Logged-in user in AddCourse:", user );
     has_certificate: true,
     certificate_completion_percentage: 90,
     qa_enabled: true,
+    // Exam link (STEM courses only, optional)
+    linkedExamId: "",
+    linkedExamYear: "",
   });
 
   const [courseThumbnail, setCourseThumbnail] = useState(null);
   const [introVideo, setIntroVideo] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
+
+  // Exam picker state — loaded once on mount
+  const [exams, setExams] = useState([]);
+  const [examYears, setExamYears] = useState([]);
+
+  // Load active exams for the picker
+  React.useEffect(() => {
+    const API_URL = import.meta.env.VITE_API_URL;
+    fetch(`${API_URL}/exams/active`)
+      .then((r) => r.json())
+      .then((data) => setExams(data.exams || []))
+      .catch(() => {}); // silently fail — field is optional
+  }, []);
+
+  // When user picks an exam, populate its available years
+  const handleExamChange = (e) => {
+    const examId = e.target.value;
+    setFormData((prev) => ({ ...prev, linkedExamId: examId, linkedExamYear: "" }));
+    if (examId) {
+      const selected = exams.find((ex) => ex._id === examId);
+      setExamYears(selected?.years?.map((y) => y.year) || []);
+    } else {
+      setExamYears([]);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -81,6 +109,12 @@ console.log("🧑‍💼 Logged-in user in AddCourse:", user );
 
     if (!formData.is_free && !formData.original_price) {
       toast.error("Price is required for paid courses");
+      return;
+    }
+
+    // Exam link: if an exam is chosen a year must also be selected
+    if (formData.linkedExamId && !formData.linkedExamYear) {
+      toast.error("Please select a year for the linked exam, or clear the exam selection.");
       return;
     }
 
@@ -599,6 +633,90 @@ console.log("🧑‍💼 Logged-in user in AddCourse:", user );
                     Enable Q&A for students
                   </label>
                 </div>
+              </div>
+            </div>
+
+            {/* ── Exam Link (STEM only, optional) ──────────────────────────── */}
+            <div className="card mb-4">
+              <div className="card-header bg-light">
+                <h5 className="mb-0">
+                  <i className="bi bi-journal-text me-2"></i>
+                  Link to Exam{" "}
+                  <span className="text-muted fw-normal fs-6">(optional — STEM courses only)</span>
+                </h5>
+              </div>
+              <div className="card-body">
+                <p className="text-muted small mb-3">
+                  Optionally associate this course with a specific exam and year (e.g. WAEC 2022).
+                  Leave both fields blank to create a standalone STEM course.
+                </p>
+                <div className="row g-3">
+                  {/* Exam selector */}
+                  <div className="col-md-6">
+                    <label className="form-label fw-semibold">Exam</label>
+                    <select
+                      value={formData.linkedExamId}
+                      onChange={handleExamChange}
+                      className="form-select"
+                    >
+                      <option value="">— No exam link —</option>
+                      {exams.map((ex) => (
+                        <option key={ex._id} value={ex._id}>
+                          {ex.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Year selector — only shown once an exam is chosen */}
+                  {formData.linkedExamId && (
+                    <div className="col-md-6">
+                      <label className="form-label fw-semibold">Year</label>
+                      <select
+                        name="linkedExamYear"
+                        value={formData.linkedExamYear}
+                        onChange={handleChange}
+                        className="form-select"
+                        required={!!formData.linkedExamId}
+                      >
+                        <option value="">— Select year —</option>
+                        {examYears.map((yr) => (
+                          <option key={yr} value={yr}>
+                            {yr}
+                          </option>
+                        ))}
+                      </select>
+                      {formData.linkedExamId && !formData.linkedExamYear && (
+                        <div className="form-text text-warning">
+                          Please select a year or clear the exam selection.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirmation badge once both are selected */}
+                {formData.linkedExamId && formData.linkedExamYear && (
+                  <div className="alert alert-info mt-3 mb-0 py-2 d-flex align-items-center gap-2">
+                    <i className="bi bi-link-45deg"></i>
+                    <span>
+                      This course will be linked to{" "}
+                      <strong>
+                        {exams.find((e) => e._id === formData.linkedExamId)?.displayName}{" "}
+                        {formData.linkedExamYear}
+                      </strong>
+                    </span>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary ms-auto"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, linkedExamId: "", linkedExamYear: "" }))
+                      }
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

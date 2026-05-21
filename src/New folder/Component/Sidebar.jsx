@@ -7,7 +7,7 @@ import {
   ShieldCheck, Users, PenLine, BookOpen, FileText,
   Newspaper, CreditCard, Settings, LogOut,
   GraduationCap, UserCheck, Plus, List,
-  ClipboardList, FlaskConical, Eye, Tag, Wallet, Package,
+  ClipboardList, FlaskConical, Eye, Tag, Wallet,
 } from "lucide-react";
 
 const BRAND = "#0C6F89";
@@ -40,7 +40,6 @@ const NAV = [
       { label: "Manage Exams",           path: "/manage_exam",          icon: List          },
       { label: "Years & Subjects",       path: "/manage_years_subjects", icon: Settings     },
       { label: "Visibility Control",     path: "/visibility_control",   icon: Eye           },
-      { label: "CBT Packages",           path: "/cbt-packages",         icon: Package       },
     ],
   },
   {

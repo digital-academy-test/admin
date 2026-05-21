@@ -1,8 +1,9 @@
 // src/Pages/CreateStemCourse.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCourseAdminStore } from "../Store/courseAdminStore";
-import { ArrowLeft, Upload, Plus, X } from "lucide-react";
+import { useCbtStore } from "../Store/cbtStore";
+import { ArrowLeft, Upload, Plus, X, Link } from "lucide-react";
 import toast from "react-hot-toast";
 
 const BRAND = "#0C6F89";
@@ -81,16 +82,28 @@ function ListInput({ items, setItems, placeholder }) {
 export default function CreateStemCourse() {
   const navigate = useNavigate();
   const { createStemCourse, loading } = useCourseAdminStore();
+  const { exams, getExamsForAdmin } = useCbtStore();
 
   const [form, setForm] = useState({
     title: "", subtitle: "", description: "", category: "",
     level: "Beginner", language: "English", price: "", isFree: false,
   });
-  const [thumbnail, setThumbnail]         = useState(null);
+  const [thumbnail, setThumbnail]               = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
-  const [tags, setTags]                   = useState([]);
+  const [tags, setTags]                         = useState([]);
   const [whatYouWillLearn, setWhatYouWillLearn] = useState([]);
-  const [requirements, setRequirements]   = useState([]);
+  const [requirements, setRequirements]         = useState([]);
+
+  // ── Exam link (optional) ───────────────────────────────────────────────────
+  const [linkedExamId, setLinkedExamId]     = useState("");
+  const [linkedExamYear, setLinkedExamYear] = useState("");
+
+  // Load exams using the same method as AddQuestion
+  useEffect(() => {
+    getExamsForAdmin();
+  }, []);
+
+  const selectedExamName = exams.find(e => e._id === linkedExamId)?.displayName || "";
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -107,12 +120,33 @@ export default function CreateStemCourse() {
       toast.error("Title, description and category are required.");
       return;
     }
+    // Exam link validation: must fill both or neither
+    if (linkedExamId && !linkedExamYear) {
+      toast.error("Please enter the year for the linked exam.");
+      return;
+    }
+    if (linkedExamYear && !linkedExamId) {
+      toast.error("Please select an exam to go with the year.");
+      return;
+    }
+    const yearNum = linkedExamYear ? parseInt(linkedExamYear) : null;
+    if (yearNum && (yearNum < 1980 || yearNum > new Date().getFullYear())) {
+      toast.error("Please enter a valid year (e.g. 2019).");
+      return;
+    }
+
     const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => fd.append(k, v));
     tags.forEach(t => fd.append("tags[]", t));
     whatYouWillLearn.forEach(w => fd.append("whatYouWillLearn[]", w));
     requirements.forEach(r => fd.append("requirements[]", r));
     if (thumbnail) fd.append("thumbnail", thumbnail);
+
+    // Only send exam fields when both are provided
+    if (linkedExamId && yearNum) {
+      fd.append("linkedExamId", linkedExamId);
+      fd.append("linkedExamYear", yearNum);
+    }
 
     try {
       const course = await createStemCourse(fd);
@@ -131,6 +165,13 @@ export default function CreateStemCourse() {
   const labelStyle = {
     display: "block", fontSize: 12, fontWeight: 700, color: "#374151",
     marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em",
+  };
+  const cardStyle = {
+    background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px",
+  };
+  const cardTitleStyle = {
+    fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800,
+    margin: "0 0 20px", color: "#1a1a1a",
   };
 
   return (
@@ -155,10 +196,8 @@ export default function CreateStemCourse() {
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 24 }}>
 
         {/* Basic Info */}
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px" }}>
-          <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, margin: "0 0 20px", color: "#1a1a1a" }}>
-            Course Information
-          </h3>
+        <div style={cardStyle}>
+          <h3 style={cardTitleStyle}>Course Information</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
               <label style={labelStyle}>Title *</label>
@@ -200,11 +239,88 @@ export default function CreateStemCourse() {
           </div>
         </div>
 
+        {/* ── Exam Link ─────────────────────────────────────────────────────── */}
+        <div style={cardStyle}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <Link size={16} color={BRAND} />
+            <h3 style={{ ...cardTitleStyle, margin: 0 }}>Link to Exam</h3>
+            <span style={{ fontSize: 11, color: "#9ca3af", fontWeight: 500,
+              background: "#f3f4f6", padding: "2px 8px", borderRadius: 20 }}>
+              Optional
+            </span>
+          </div>
+          <p style={{ margin: "0 0 18px", fontSize: 12, color: "#9ca3af" }}>
+            Associate this course with a specific exam and year (e.g. WAEC 2022).
+            Leave both blank to create a standalone STEM course.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            {/* Exam — dropdown from available exams */}
+            <div>
+              <label style={labelStyle}>Exam</label>
+              <select
+                value={linkedExamId}
+                onChange={e => { setLinkedExamId(e.target.value); if (!e.target.value) setLinkedExamYear(""); }}
+                style={inputStyle}
+              >
+                <option value="">— No exam link —</option>
+                {exams.map(ex => (
+                  <option key={ex._id} value={ex._id}>{ex.displayName}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Year — free text input */}
+            <div>
+              <label style={labelStyle}>Year</label>
+              <input
+                type="number"
+                value={linkedExamYear}
+                onChange={e => setLinkedExamYear(e.target.value)}
+                disabled={!linkedExamId}
+                placeholder={linkedExamId ? "e.g. 2019" : "Select exam first"}
+                min="1980"
+                max={new Date().getFullYear()}
+                style={{
+                  ...inputStyle,
+                  background: linkedExamId ? "#fff" : "#f9fafb",
+                  color: linkedExamId ? "#374151" : "#9ca3af",
+                  cursor: linkedExamId ? "text" : "not-allowed",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Confirmation badge */}
+          {linkedExamId && linkedExamYear && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14,
+              padding: "10px 14px", borderRadius: 10, background: "#e8f4f8",
+              border: `1px solid ${BRAND}30` }}>
+              <Link size={14} color={BRAND} />
+              <span style={{ fontSize: 13, color: BRAND, fontWeight: 600, flex: 1 }}>
+                Linked to <strong>{selectedExamName} {linkedExamYear}</strong>
+              </span>
+              <button type="button"
+                onClick={() => { setLinkedExamId(""); setLinkedExamYear(""); }}
+                style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
+                  borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff",
+                  fontSize: 11, color: "#6b7280", cursor: "pointer", fontWeight: 600 }}>
+                <X size={10} /> Clear
+              </button>
+            </div>
+          )}
+
+          {/* Warning when exam is chosen but year is missing */}
+          {linkedExamId && !linkedExamYear && (
+            <p style={{ margin: "10px 0 0", fontSize: 12, color: "#f59e0b", fontWeight: 600 }}>
+              ⚠ Please enter the year or clear the exam selection.
+            </p>
+          )}
+        </div>
+
         {/* Thumbnail */}
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px" }}>
-          <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, margin: "0 0 16px" }}>
-            Course Thumbnail
-          </h3>
+        <div style={cardStyle}>
+          <h3 style={cardTitleStyle}>Course Thumbnail</h3>
           <label style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
             border: "2px dashed #e5e7eb", borderRadius: 12, padding: "24px", cursor: "pointer",
             background: thumbnailPreview ? "#f0f9fb" : "#fafafa", minHeight: 160, position: "relative" }}>
@@ -222,10 +338,8 @@ export default function CreateStemCourse() {
         </div>
 
         {/* Pricing */}
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px" }}>
-          <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, margin: "0 0 16px" }}>
-            Pricing
-          </h3>
+        <div style={cardStyle}>
+          <h3 style={cardTitleStyle}>Pricing</h3>
           <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, cursor: "pointer" }}>
             <input type="checkbox" checked={form.isFree} onChange={e => set("isFree", e.target.checked)}
               style={{ width: 16, height: 16, accentColor: BRAND }} />
@@ -241,10 +355,8 @@ export default function CreateStemCourse() {
         </div>
 
         {/* What students will learn */}
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px" }}>
-          <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, margin: "0 0 6px" }}>
-            What Students Will Learn
-          </h3>
+        <div style={cardStyle}>
+          <h3 style={{ ...cardTitleStyle, marginBottom: 6 }}>What Students Will Learn</h3>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af" }}>
             Add learning outcomes. Press Enter or click + to add each item.
           </p>
@@ -253,20 +365,16 @@ export default function CreateStemCourse() {
         </div>
 
         {/* Requirements */}
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px" }}>
-          <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, margin: "0 0 6px" }}>
-            Requirements
-          </h3>
+        <div style={cardStyle}>
+          <h3 style={{ ...cardTitleStyle, marginBottom: 6 }}>Requirements</h3>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af" }}>Prerequisites students need.</p>
           <ListInput items={requirements} setItems={setRequirements}
             placeholder="e.g. SS1 Mathematics knowledge" />
         </div>
 
         {/* Tags */}
-        <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 14, padding: "24px" }}>
-          <h3 style={{ fontFamily: "'Montserrat', sans-serif", fontSize: 15, fontWeight: 800, margin: "0 0 6px" }}>
-            Tags
-          </h3>
+        <div style={cardStyle}>
+          <h3 style={{ ...cardTitleStyle, marginBottom: 6 }}>Tags</h3>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "#9ca3af" }}>
             Add tags to help students find this course. Press Enter to add.
           </p>

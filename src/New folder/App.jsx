@@ -50,7 +50,6 @@ import ManageInstructors from "./Pages/ManageInstructors";
 import ReviewInstructor  from "./Pages/ReviewInstructor";
 import EditStemCourse from "./Pages/EditStemCourse";
 import AdminPayments  from "./Pages/AdminPayments";
-import AdminCbtPackages from "./Pages/AdminCbtPackages";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const HEADER_H  = 56;  // px — matches Bootstrap py-2 nav (~56px)
@@ -253,9 +252,6 @@ function Layout() {
             {/* ── Payments ─────────────────────────────────────────────── */}
             <Route path="/payments" element={
               <ProtectedRoute requiredFeature="Blog Posts"><AdminPayments /></ProtectedRoute>
-            } />
-            <Route path="/cbt-packages" element={
-              <ProtectedRoute requiredFeature="Blog Posts"><AdminCbtPackages /></ProtectedRoute>
             } />
 
             {/* ── Fallback ─────────────────────────────────────────────── */}

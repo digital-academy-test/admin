@@ -1,4 +1,4 @@
-// src/Store/courseStore.jsx
+// src/Store/courseAdminStore.jsx
 import { create } from "zustand";
 import adminApi from "../utils/adminApi";
 
@@ -32,7 +32,6 @@ export const useCourseAdminStore = create((set, get) => ({
   getCourseById: async (id) => {
     set({ loading: true, error: null, course: null });
     try {
-      // Uses /courses/admin/:id — requires staff token, returns full course with sections
       const res = await adminApi.get(`/courses/admin/${id}`);
       set({ course: res.data.course, loading: false });
       return res.data.course;
@@ -48,7 +47,6 @@ export const useCourseAdminStore = create((set, get) => ({
     try {
       const res = await adminApi.put(`/courses/admin/${id}/review`, { action, note });
       set({ message: res.data.message, loading: false });
-      // Update in local list
       set((state) => ({
         courses: state.courses.map((c) =>
           c._id === id ? { ...c, approvalStatus: res.data.course.approvalStatus } : c
@@ -57,6 +55,24 @@ export const useCourseAdminStore = create((set, get) => ({
       return res.data;
     } catch (err) {
       set({ error: err.response?.data?.message || "Action failed", loading: false });
+      throw err;
+    }
+  },
+
+  // ── Delete a course ────────────────────────────────────────────────────────
+  // DELETE /courses/admin/:id
+  deleteCourse: async (id) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await adminApi.delete(`/courses/admin/${id}`);
+      set({ message: res.data.message, loading: false });
+      // Remove from local list immediately
+      set((state) => ({
+        courses: state.courses.filter((c) => c._id !== id),
+      }));
+      return res.data;
+    } catch (err) {
+      set({ error: err.response?.data?.message || "Delete failed", loading: false });
       throw err;
     }
   },
@@ -72,6 +88,29 @@ export const useCourseAdminStore = create((set, get) => ({
       return res.data.course;
     } catch (err) {
       set({ error: err.response?.data?.message || "Failed to create course", loading: false });
+      throw err;
+    }
+  },
+
+  // ── Update a STEM course (or any course details) ───────────────────────────
+  // PUT /courses/admin/:id  — same multipart/form-data as create
+  updateCourse: async (id, formData) => {
+    set({ loading: true, error: null, message: null });
+    try {
+      const res = await adminApi.put(`/courses/admin/${id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      set({ message: res.data.message, loading: false });
+      // Refresh local list entry
+      set((state) => ({
+        courses: state.courses.map((c) =>
+          c._id === id ? { ...c, ...res.data.course } : c
+        ),
+        course: state.course?._id === id ? res.data.course : state.course,
+      }));
+      return res.data.course;
+    } catch (err) {
+      set({ error: err.response?.data?.message || "Update failed", loading: false });
       throw err;
     }
   },
